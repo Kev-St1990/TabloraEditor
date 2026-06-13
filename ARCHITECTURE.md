@@ -16,17 +16,17 @@ Wichtig: Für XLSX- und XLSM-Dateien bleibt die `openpyxl.Workbook`-Instanz die 
 
 ## Bestehende Projektstruktur
 
-Aktuell vorhandene Dateien:
+Aktuell vorhandene Dateien und Pakete:
 
 - `main.py`: Einstiegspunkt, erzeugt `CsvXlsxEditorApp`
-- `app.py`: minimales `tk.Tk`-Fenster mit `SheetManager`
-- `sheet_manager.py`: einfacher `Frame` mit einer `tksheet.Sheet`
-- `file_manager.py`: rudimentäres CSV-/XLSX-Laden
-- `filter_manager.py`: Platzhalter für aktive Filter
-- `settings.py`: App-Name und Version
+- `csv_xlsx_editor/app.py`: minimales `tk.Tk`-Fenster mit `SheetManager`
+- `csv_xlsx_editor/ui/sheet_manager.py`: einfacher `Frame` mit einer `tksheet.Sheet`
+- `csv_xlsx_editor/io/file_manager.py`: rudimentäres CSV-/XLSX-Laden
+- `csv_xlsx_editor/domain/filter_manager.py`: Platzhalter für aktive Filter
+- `csv_xlsx_editor/config.py`: App-Name und Version
 - `requirements.txt`: enthält bereits `tksheet`, `openpyxl`, `pandas`, `tkinterdnd2`, `darkdetect`
 
-Die Zielarchitektur kann diese Namen teilweise beibehalten, sollte sie aber in klarere Verantwortlichkeiten aufteilen.
+Die alte Root-Modulstruktur wurde entfernt. Neue Implementierung erfolgt ausschließlich unter `csv_xlsx_editor/`.
 
 ## Vorgeschlagene Paketstruktur
 

@@ -14,7 +14,7 @@ Statuswerte:
 
 | Schritt | Status | Ergebnis | Tests | Notizen |
 | --- | --- | --- | --- | --- |
-| 1. Paketstruktur anlegen und vorhandene Platzhalter überführen | Offen | Zielpaket `csv_xlsx_editor/` mit klaren Subpackages | Import-/Smoke-Tests | Keine Verhaltensänderung außer stabiler Einstiegspunkt |
+| 1. Paketstruktur anlegen und vorhandene Platzhalter überführen | Erledigt | Zielpaket `csv_xlsx_editor/` mit Subpackages angelegt; alte Root-Wrapper entfernt | Import-/Smoke-Tests bestanden | `main.py` nutzt ausschließlich das neue Paket |
 | 2. Domainmodell implementieren | Offen | `WorkbookDocument`, `WorksheetDocument`, `CellData`, `TableView`, `SortState`, `FilterState` | Unit-Tests für Koordinaten, Filter, Sortierzustand | Ohne tkinter/tksheet-Abhängigkeit testbar |
 | 3. Datei-IO implementieren | Offen | CSV/XLSX/XLSM laden und speichern, Delimiter-Erkennung, Formeln/Formate/Makros erhalten | Roundtrip-Tests mit temporären Dateien | XLSM mit `keep_vba=True`; Formeln mit `data_only=False` |
 | 4. SheetView mit Indexspalte und Koordinatenmapping implementieren | Offen | `tksheet`-View rendert aktive Worksheet-View | Unit-Tests für Mapping; UI-Smoke-Test optional | UI bleibt Adapter über Domainmodell |

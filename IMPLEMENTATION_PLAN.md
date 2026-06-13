@@ -123,6 +123,88 @@ Mindestabdeckung pro Schritt:
 - Schritt 7: Sortierzyklus, FilterState-Änderungen, Autosize-Berechnung
 - Schritt 8: Shortcut-Mapping für macOS und Windows, Dialog-Dateitypfilter
 
+## Bug Summary und Learnings
+
+### Beobachtete Bugklasse
+
+In den letzten sechs Commits sind mehrere Folge-Bugfixes entstanden, obwohl die betroffenen Änderungen fachlich eng beieinander lagen. Die einzige erwartete Spezialbehandlung war die Datumssortierung. Alles andere hätte durch die bestehende Architektur und Tests stabil bleiben sollen.
+
+### Ursache der Iterationen
+
+- Die Sortierlogik war zu lange gleichzeitig an `tksheet`-Standardverhalten und an eigene Callback-Pfade gekoppelt.
+- Die Unterscheidung zwischen `Sort rows` und `Sort values` war in UI und Domain zwar vorgesehen, aber an einigen Stellen indirekt verdrahtet.
+- Ein aktiver Row-Sort konnte nach einem Value-Sort weiterwirken, wenn der View-State nicht explizit zurückgesetzt wurde.
+- Kontextmenüs in `tksheet` reagieren empfindlich darauf, woher die Callback- und Bildreferenzen stammen. Icons verschwanden, wenn sie nicht stabil und direkt genug registriert wurden.
+- Der Header-Kontext musste aus dem tatsächlich geklickten Header kommen, nicht nur aus der aktuellen Auswahl. Sonst verschiebt sich die Zielspalte bei Interaktionen leicht.
+
+### Konkrete Learnings
+
+- Jede Sortieraktion braucht eine eindeutige semantische Zuordnung:
+  - `Sort rows` verändert die Zeilenreihenfolge.
+  - `Sort values` verändert nur Zellen innerhalb einer Spalte.
+- Value-Sort darf keine alte Row-Sortierung im View-State stehen lassen.
+- Header-Aktionen sollten aus dem Kontextmenü-Target abgeleitet werden, nicht aus einer impliziten Selektion.
+- Icons sollten über stabile Referenzen und über den tatsächlichen Menüeintrag registriert werden, nicht nur indirekt über temporäre Objektpfade.
+- Für Sortierung lohnt sich eine Testfolge mit mehreren Schritten hintereinander, nicht nur der Einzelaufruf:
+  - Row-Sort
+  - Value-Sort
+  - Date-Sort mit mehreren Formaten
+  - Rücksprung per Undo/Redo
+
+### Schutzregeln für zukünftige Änderungen
+
+- Neue Sortierlogik immer zuerst im Domainmodell verankern, dann in Commands, erst danach in der UI verdrahten.
+- Bei Value-Sort zusätzliche Tests schreiben, die einen zuvor aktiven Row-Sort mit einbeziehen.
+- Datumssortierung immer mit unterschiedlichen Darstellungen prüfen, insbesondere englische und deutsche Monatskürzel.
+- Wenn `tksheet`-Standardverhalten ersetzt wird, sollte das in einer klaren Integrationsschicht passieren, nicht verteilt über mehrere UI-Methoden.
+
+### Kurzfassung für die weitere Arbeit
+
+Die Architektur ist tragfähig, aber Sortier- und Header-Interaktionen sind ein Bereich mit hoher Kopplung an UI-Details. Künftige Änderungen sollten dort grundsätzlich mit kombinierten End-to-End- und Domain-Tests abgesichert werden, damit wir weniger Schleifen zwischen UI, Domain und Menüverdrahtung brauchen.
+
+### Weitere Bugfix-Folge aus den Commits
+
+Die nachfolgenden Commits haben zusätzliche Korrekturen sichtbar gemacht, die weniger die Kernarchitektur als die Verdrahtung und die Datenrepräsentation betrafen:
+
+- `eb06b4cb4325e3d8927546603ca74bb3b7bc7f97`
+  - Shortcut-Aliase fehlten für `on_open`, `on_save` und `on_save_as`, obwohl der Shortcut-Manager genau diese Handler erwartet.
+  - Lehre: Öffentliche Handler-Namen sind Teil des UI-Vertrags und sollten mit einem Import- oder Strukturtest abgesichert werden.
+- `fc321f7d6fab46c2f69c6d901a093c6f24b34aea`
+  - Der native Row-Index von `tksheet` kollidierte mit unserer eigenen Indexspalte.
+  - Lehre: Sobald eine UI-Komponente eine synthetische Spalte oder Zeile darstellt, sollte das native Gegenstück explizit deaktiviert oder klar getrennt werden.
+- `209dd2f41e048b440611a3c53619c641041e6ee5`
+  - CSV- und XLSX-Header mussten als eigene Metadaten mitgeführt werden, statt sie implizit in den ersten Datenzeilen mitzulesen.
+  - Lehre: Datei-Header sind kein bloßes Anzeigeproblem, sondern Teil des Import-/Exportmodells und brauchen eine eigene Repräsentation.
+- `31c58135af914aa9ba356734be0ca7b513e0d017`
+  - Filteraktionen wurden erst spät an die Header-/View-Controller angehängt.
+  - Lehre: Spaltenbezogene Aktionen gehören in denselben Interaktionskanal wie Sortierung und Autosize, sonst zerfällt die Bedienlogik unnötig.
+- `fb0214786251cff27fb9157100888e6fb3df6eca`
+  - Die Filteraktion war als Menüpunkts-Lösung zu lose eingebettet und wurde deshalb in das Header-Kontextmenü verschoben.
+  - Lehre: Wenn eine Aktion klar an eine Spalte gebunden ist, sollte sie dort angeboten werden, wo auch die Zielspalte eindeutig ist.
+
+### Datums-Sortierung als Sonderfall
+
+Der Commit `e93fbd607bbd49b06f8f7abfbdbd6cf86db2e4c2` brachte die eigentliche fachliche Ausnahme: Sortierung nach Datum.
+
+- Die Sortierung musste mehrere Datumsdarstellungen erkennen, darunter ISO-nahe Formate, `DD.MM.YYYY`, Texte mit englischen Monatsnamen und deutsche Kürzel wie `Mär`, `Mai` und `Dez`.
+- In der Praxis brauchte diese Logik mehrere lokale Iterationen, bevor die Reihenfolge stabil und erwartbar war.
+- Ein zentraler Stolperstein war, dass `Sort values` und `Sort rows` zwar ähnlich aussehen, aber unterschiedliche Zustände verändern. Gerade bei Datum war es wichtig, die Value-Sortierung sauber vom Row-Sort-View-State zu entkoppeln.
+- Die Lösung lebt deshalb nicht nur von einem Parser, sondern auch von klaren Tests mit echten Beispielwerten und gemischten Monatsformaten.
+
+### Lehre aus der Datums-Iteration
+
+- Fachliche Sonderfälle wie Datum sollten früh als explizite Testdaten im Plan oder in der Testmatrix auftauchen.
+- Wenn ein Sortierfall mehrere Formate akzeptieren muss, lohnt sich zuerst eine kleine Matrix aus repräsentativen Beispielwerten, bevor man UI-Verkabelung und Undo/Redo darauf setzt.
+- Value-Sort und Row-Sort sollten auch dann gemeinsam getestet werden, wenn nur einer der beiden Pfade die Sonderlogik direkt nutzt.
+
+### Gesamtbild
+
+Die Folgefehler zeigen vor allem drei wiederkehrende Risiken:
+
+1. UI-Verträge sind nicht nur Methodensignaturen, sondern auch Erwartung an Benennung, Platzierung und Menüstruktur.
+2. Synthetische UI-Elemente wie Indexspalten brauchen eine eindeutige Trennung von nativen Widget-Funktionen.
+3. Import-/Export-Metadaten wie Header gehören früh in das Domainmodell, sonst entstehen Off-by-one-Effekte und spätere Korrekturschleifen.
+
 ## Schrittplan
 
 ### 1. Paketstruktur

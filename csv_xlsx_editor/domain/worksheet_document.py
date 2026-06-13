@@ -51,6 +51,27 @@ class WorksheetDocument:
         self.max_column = max(self.max_column, column + 1)
         self.rebuild_view()
 
+    def set_cells(self, start_row: int, start_column: int, matrix: list[list[Any]]) -> None:
+        """Paste a rectangular matrix of values at zero-based source coordinates."""
+        if not matrix:
+            return
+
+        for row_offset, row_values in enumerate(matrix):
+            for column_offset, value in enumerate(row_values):
+                self._validate_coordinates(start_row + row_offset, start_column + column_offset)
+                cell = self.cells.get((start_row + row_offset, start_column + column_offset))
+                if cell is None:
+                    self.cells[(start_row + row_offset, start_column + column_offset)] = CellData.from_value(value)
+                else:
+                    cell.set_value(value)
+
+        self.max_row = max(self.max_row, start_row + len(matrix))
+        self.max_column = max(
+            self.max_column,
+            start_column + max((len(row_values) for row_values in matrix), default=0),
+        )
+        self.rebuild_view()
+
     def get_display_rows(self) -> list[int]:
         """Return source row indexes currently visible in the table view."""
         return list(self.table_view.visible_source_rows)

@@ -22,6 +22,7 @@ class PackageStructureTests(unittest.TestCase):
             "csv_xlsx_editor.io.csv_adapter",
             "csv_xlsx_editor.io.exceptions",
             "csv_xlsx_editor.platform",
+            "csv_xlsx_editor.platform.clipboard",
             "csv_xlsx_editor.ui",
             "csv_xlsx_editor.ui.sheet_mapping",
             "csv_xlsx_editor.ui.sheet_view",

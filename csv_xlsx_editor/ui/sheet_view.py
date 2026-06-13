@@ -21,7 +21,7 @@ class SheetView(Frame):
 
         self.worksheet: WorksheetDocument | None = None
         self.mapper: SheetCoordinateMapper | None = None
-        self.sheet = Sheet(self)
+        self.sheet = Sheet(self, show_row_index=False)
         self.sheet.enable_bindings()
         self.sheet.pack(fill="both", expand=True)
 

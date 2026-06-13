@@ -626,6 +626,8 @@ Die Indexspalte hat keine Source-Spalte.
 
 ## Empfohlene Umsetzungsschritte
 
+Der konkrete Implementierungsplan mit Tracker, Coding Guidelines, Teststrategie und Definition of Done liegt in `IMPLEMENTATION_PLAN.md`.
+
 1. Paketstruktur anlegen und vorhandene Platzhalter in die neue Struktur überführen.
 2. `WorkbookDocument`, `WorksheetDocument`, `CellData`, `TableView`, `SortState` und `FilterState` implementieren.
 3. `CsvAdapter` und `XlsxAdapter` mit verlustarmem Roundtrip inklusive CSV-Delimiter-Auswahl und XLSM-Erhalt implementieren.

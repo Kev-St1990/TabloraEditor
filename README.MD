@@ -56,6 +56,7 @@ Für ein direkt ausführbares Artefakt gibt es zwei Build-Pfade:
 
 Die erzeugten Dateien liegen anschließend in `dist/`. Dort findest du unter Windows das Standalone-Verzeichnis von PyInstaller und unter macOS das `.app`-Bundle von py2app.
 Vor dem macOS-Build sollten die Projektabhängigkeiten bereits installiert sein, zum Beispiel mit `pip install -r requirements.txt`.
+Der macOS-Bundle-Name ist dateisystemfreundlich und weicht deshalb vom Fenstertitel `CSV/XLSX Editor` ab.
 
 ## Projektstatus
 

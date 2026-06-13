@@ -23,6 +23,8 @@ class PackageStructureTests(unittest.TestCase):
             "csv_xlsx_editor.io.exceptions",
             "csv_xlsx_editor.platform",
             "csv_xlsx_editor.ui",
+            "csv_xlsx_editor.ui.sheet_mapping",
+            "csv_xlsx_editor.ui.sheet_view",
         ]
 
         for module_name in modules:

@@ -1,17 +1,15 @@
-"""Current tksheet placeholder embedded in a tkinter frame."""
+"""Container for the active worksheet view."""
 
 from tkinter import Frame
 from typing import Any
 
+from csv_xlsx_editor.ui.sheet_view import SheetView
+
 
 class SheetManager(Frame):
-    """Hosts the tksheet widget for the current scaffold UI."""
+    """Hosts the sheet view used by the main application window."""
 
     def __init__(self, master: Any) -> None:
         super().__init__(master)
-
-        from tksheet import Sheet
-
-        self.sheet = Sheet(self)
-        self.sheet.enable_bindings()
-        self.sheet.pack(fill="both", expand=True)
+        self.sheet_view = SheetView(self)
+        self.sheet_view.pack(fill="both", expand=True)

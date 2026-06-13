@@ -2,17 +2,17 @@
 
 ## Zielbild
 
-Der Editor wird als klassische Desktop-Anwendung mit `tkinter` aufgebaut. Die Tabellenoberfläche basiert auf `tksheet`, während XLSX-Dateien über `openpyxl` geladen und gespeichert werden. CSV-Dateien werden über die Python-Standardbibliothek verarbeitet.
+Der Editor wird als klassische Desktop-Anwendung mit `tkinter` aufgebaut. Die Tabellenoberfläche basiert auf `tksheet`, während XLSX- und XLSM-Dateien über `openpyxl` geladen und gespeichert werden. CSV-Dateien werden über die Python-Standardbibliothek verarbeitet.
 
 Der zentrale Entwurf trennt strikt zwischen:
 
 - UI: Fenster, Menüs, Tabs, Dialoge und `tksheet`-Events
 - Dokumentmodell: Workbook, Worksheets, Zellenwerte, Formeln, Formate, Filter- und Sortierzustand
-- Datei-IO: CSV/XLSX Import und Export
+- Datei-IO: CSV/XLSX/XLSM Import und Export
 - Aktionen: Undo/Redo-fähige Änderungen
 - Plattformintegration: Clipboard, Tastaturkürzel, Dateidialoge, Mac/Windows-Verhalten
 
-Wichtig: Für XLSX-Dateien bleibt die `openpyxl.Workbook`-Instanz die Quelle für Formeln und Formatierungen. Die UI arbeitet auf einer editierbaren View-Schicht, damit Sortierung, Filterung und Indexspalte nicht destruktiv auf die originale Worksheet-Struktur wirken.
+Wichtig: Für XLSX- und XLSM-Dateien bleibt die `openpyxl.Workbook`-Instanz die Quelle für Formeln und Formatierungen. Die UI arbeitet auf einer editierbaren View-Schicht, damit Sortierung, Filterung und Indexspalte während der Bearbeitung nicht destruktiv auf die originale Worksheet-Struktur wirken. Beim Speichern wird eine aktive View-Sortierung bewusst in die gespeicherte Datei übernommen.
 
 ## Bestehende Projektstruktur
 
@@ -127,12 +127,12 @@ Wichtige Bestandteile:
 
 Ort: `csv_xlsx_editor/domain/workbook_document.py`
 
-Repräsentiert eine geöffnete CSV- oder XLSX-Datei.
+Repräsentiert eine geöffnete CSV-, XLSX- oder XLSM-Datei.
 
 Wichtige Attribute:
 
 - `path: str | None`
-- `file_type: Literal["csv", "xlsx"]`
+- `file_type: Literal["csv", "xlsx", "xlsm"]`
 - `worksheets: list[WorksheetDocument]`
 - `active_sheet_id: str`
 - `openpyxl_workbook: openpyxl.Workbook | None`
@@ -147,7 +147,7 @@ Wichtige Methoden:
 
 Hinweis:
 
-- Bei XLSX wird `openpyxl_workbook` behalten, damit Formeln, Styles, Spaltenbreiten, Zahlenformate und sonstige Workbook-Metadaten nicht verloren gehen.
+- Bei XLSX und XLSM wird `openpyxl_workbook` behalten, damit Formeln, Styles, Spaltenbreiten, Zahlenformate, Makrobestandteile bei XLSM und sonstige Workbook-Metadaten nicht verloren gehen.
 - Bei CSV gibt es genau ein `WorksheetDocument`.
 
 ### `WorksheetDocument`
@@ -239,12 +239,16 @@ Wichtige Methoden:
 
 - `load(path: str, encoding: str = "utf-8-sig", delimiter: str | None = None) -> WorkbookDocument`
 - `save(document: WorkbookDocument, path: str, delimiter: str = ",") -> None`
+- `sniff_dialect(path: str, encoding: str = "utf-8-sig") -> CsvDialect`
 
 Hinweis:
 
 - CSV hat keine Formeln oder Formatierungen als native Metadaten.
 - CSV-Dateien werden als ein Worksheet geladen.
-- Dialect-Erkennung kann über `csv.Sniffer` ergänzt werden.
+- Beim Öffnen wird der Dialekt per `csv.Sniffer` erkannt.
+- Der Öffnungsdialog zeigt den erkannten Delimiter an und erlaubt eine manuelle Auswahl, insbesondere Komma oder Semikolon.
+- Der erkannte oder manuell gewählte Delimiter wird im `WorkbookDocument` gespeichert und beim Speichern als Standard verwendet.
+- Beim Speichern unter kann der Delimiter erneut über den Speicherdialog festgelegt werden.
 
 ### `XlsxAdapter`
 
@@ -258,10 +262,13 @@ Wichtige Methoden:
 
 Wichtige Regeln:
 
-- `load_workbook(path, data_only=False)` verwenden, damit Formeln erhalten bleiben.
+- XLSX mit `load_workbook(path, data_only=False)` laden, damit Formeln erhalten bleiben.
+- XLSM mit `load_workbook(path, data_only=False, keep_vba=True)` laden, damit Makros und VBA-Bestandteile erhalten bleiben.
 - Bestehende `openpyxl`-Zellen werden aktualisiert, nicht neu erzeugt, wenn Formatierungen erhalten bleiben sollen.
 - Zellwerte und Formeln werden in die originale Workbook-Struktur zurückgeschrieben.
 - Styles, Zahlenformate, Zeilenhöhen, Spaltenbreiten und Worksheet-Metadaten bleiben in `openpyxl` erhalten, solange nicht explizit geändert.
+- Eine aktive View-Sortierung wird beim Speichern materialisiert: Die sichtbare Reihenfolge aus `TableView.visible_source_rows` wird in die gespeicherte Worksheet-Reihenfolge übernommen.
+- Filter bleiben ein View-Zustand und entfernen beim Speichern keine ausgefilterten Daten.
 
 ## UI-Schicht
 
@@ -333,6 +340,8 @@ Sortierverhalten:
 - Erster Linksklick: aufsteigend
 - Zweiter Linksklick: absteigend
 - Dritter Linksklick: Sortierung entfernen
+- Die Sortierung wirkt zunächst nur auf die sichtbare View.
+- Beim Speichern wird die aktuelle View-Sortierung in die Datei übernommen.
 
 ### `FilterPopup`
 
@@ -572,10 +581,12 @@ Verantwortung:
 - Datei öffnen/speichern
 - Plattformneutrale Dateitypfilter
 - Fehlerdialoge und Bestätigungsdialoge
+- CSV-Öffnungsoptionen für erkannten oder manuell gewählten Delimiter
+- CSV-Speicheroptionen für Komma, Semikolon oder weiteren Delimiter
 
-## Erhalt von Formeln und Formatierungen
+## Erhalt von Formeln, Makros und Formatierungen
 
-XLSX-Dateien müssen mit `data_only=False` geladen werden. Dadurch bleiben Formeln als Zellwerte erhalten. Beim Speichern wird die bestehende `openpyxl.Workbook`-Struktur aktualisiert und gespeichert.
+XLSX-Dateien müssen mit `data_only=False` geladen werden. XLSM-Dateien müssen zusätzlich mit `keep_vba=True` geladen werden. Dadurch bleiben Formeln als Zellwerte sowie Makrobestandteile erhalten. Beim Speichern wird die bestehende `openpyxl.Workbook`-Struktur aktualisiert und gespeichert.
 
 Regeln:
 
@@ -584,6 +595,8 @@ Regeln:
 - Bestehende `openpyxl`-Zellen behalten Style, Fill, Font, Border, Alignment, Protection und Number Format.
 - Neue Zellen können optional Style von Nachbarzellen übernehmen, aber das ist eine spätere Implementierungsentscheidung.
 - `openpyxl` berechnet Formeln nicht neu. Excel berechnet sie beim Öffnen, wenn Workbook-Calculation-Properties entsprechend gesetzt werden.
+- Formatierungen müssen in Version 1 nicht in `tksheet` sichtbar dargestellt werden.
+- Ziel für Version 1 ist ein verlustfreier Formatierungserhalt beim Speichern, nicht visuelle Excel-Parität im UI.
 
 ## tksheet-Integration
 
@@ -604,18 +617,18 @@ source_row = table_view.visible_source_rows[ui_row]
 
 Die Indexspalte hat keine Source-Spalte.
 
-## Offene Entwurfsentscheidungen
+## Architekturentscheidungen
 
-- Ob CSV standardmäßig Komma oder Semikolon nutzt, sollte über Sniffer und Speicherdialog steuerbar sein.
-- XLSM ist im README erwähnt, aber nicht Teil der aktuellen Anforderungen. Falls XLSM unterstützt wird, muss `openpyxl.load_workbook(..., keep_vba=True)` berücksichtigt werden.
-- Ob Sortierung die Datei physisch umsortieren darf oder nur die View betrifft, sollte bewusst entschieden werden. Für Excel-ähnliches Verhalten im Editor ist zunächst eine View-Sortierung sicherer.
-- Ob Formatierungen im UI sichtbar werden sollen, ist getrennt vom Erhalt beim Speichern. Für die erste Version reicht der verlustfreie Erhalt beim Speichern.
+- CSV nutzt beim Öffnen `csv.Sniffer`; der Öffnungsdialog erlaubt eine manuelle Delimiter-Auswahl, insbesondere Komma und Semikolon.
+- XLSM wird unterstützt. Der XLSX/XLSM-Adapter lädt XLSM-Dateien mit `keep_vba=True`.
+- Sortierung ist während der Bearbeitung eine View-Sortierung. Beim Speichern wird die aktuell sortierte View-Reihenfolge in die Datei übernommen.
+- Formatierungen müssen in Version 1 nicht im UI sichtbar sein. Verbindlich ist zunächst der verlustfreie Erhalt beim Speichern.
 
 ## Empfohlene Umsetzungsschritte
 
 1. Paketstruktur anlegen und vorhandene Platzhalter in die neue Struktur überführen.
 2. `WorkbookDocument`, `WorksheetDocument`, `CellData`, `TableView`, `SortState` und `FilterState` implementieren.
-3. `CsvAdapter` und `XlsxAdapter` mit verlustarmem Roundtrip implementieren.
+3. `CsvAdapter` und `XlsxAdapter` mit verlustarmem Roundtrip inklusive CSV-Delimiter-Auswahl und XLSM-Erhalt implementieren.
 4. `SheetView` mit Indexspalte und Koordinatenmapping implementieren.
 5. Copy/Paste über `ClipboardService` ergänzen.
 6. Undo/Redo-Command-System hinzufügen.

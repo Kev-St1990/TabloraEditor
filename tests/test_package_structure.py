@@ -30,8 +30,11 @@ class PackageStructureTests(unittest.TestCase):
             "csv_xlsx_editor.platform",
             "csv_xlsx_editor.platform.clipboard",
             "csv_xlsx_editor.ui",
+            "csv_xlsx_editor.ui.filter_popup",
+            "csv_xlsx_editor.ui.header_controller",
             "csv_xlsx_editor.ui.sheet_mapping",
             "csv_xlsx_editor.ui.sheet_view",
+            "csv_xlsx_editor.ui.sheet_manager",
         ]
 
         for module_name in modules:

@@ -61,6 +61,20 @@ class SheetView(Frame):
         self.mapper = SheetCoordinateMapper(self.worksheet)
         self.refresh()
 
+    def set_column_width(self, ui_column: int, width: int) -> None:
+        """Set a visible UI column width when the underlying widget supports it."""
+        for method_name in ("set_column_width", "column_width", "set_column_widths"):
+            method = getattr(self.sheet, method_name, None)
+            if callable(method):
+                try:
+                    method(ui_column, width)
+                except TypeError:
+                    try:
+                        method(ui_column, width=width)
+                    except TypeError:
+                        continue
+                break
+
     def _set_sheet_data(self, matrix: list[list[Any]], headers: list[str]) -> None:
         if hasattr(self.sheet, "set_sheet_data"):
             self.sheet.set_sheet_data(matrix, reset_col_positions=True, reset_row_positions=True)

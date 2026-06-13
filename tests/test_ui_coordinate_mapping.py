@@ -38,6 +38,13 @@ class SheetCoordinateMappingTests(unittest.TestCase):
             ],
         )
 
+    def test_matrix_uses_loaded_column_headers(self) -> None:
+        worksheet = self.make_worksheet()
+        worksheet.set_headers(["name", "city"])
+        builder = SheetMatrixBuilder(worksheet)
+
+        self.assertEqual(builder.headers(), [INDEX_COLUMN_HEADER, "name", "city"])
+
     def test_mapper_rejects_index_column_as_source_cell(self) -> None:
         mapper = SheetCoordinateMapper(self.make_worksheet())
 

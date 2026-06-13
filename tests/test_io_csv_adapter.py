@@ -30,7 +30,8 @@ class CsvAdapterTests(unittest.TestCase):
 
             sheet = document.get_active_sheet()
             self.assertEqual(document.csv_delimiter, "|")
-            self.assertEqual(sheet.get_cell(1, 1).value, "Berlin")
+            self.assertEqual(sheet.column_headers, ["name", "city"])
+            self.assertEqual(sheet.get_cell(0, 1).value, "Berlin")
 
     def test_save_materializes_sort_but_not_filter(self) -> None:
         with TemporaryDirectory() as temp_dir:
@@ -54,10 +55,10 @@ class CsvAdapterTests(unittest.TestCase):
             self.assertEqual(
                 rows,
                 [
+                    ["name", "city"],
                     ["Alice", "Berlin"],
                     ["Bob", "London"],
                     ["Charlie", "Paris"],
-                    ["name", "city"],
                 ],
             )
 

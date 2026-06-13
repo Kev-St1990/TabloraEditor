@@ -46,10 +46,14 @@ class SheetMatrixBuilder:
 
     def headers(self) -> list[str]:
         """Return UI headers including the synthetic index column."""
-        return [INDEX_COLUMN_HEADER] + [
-            self._column_label(source_column)
-            for source_column in self.worksheet.table_view.visible_source_columns
-        ]
+        if self.worksheet.column_headers:
+            headers = [str(self.worksheet.column_headers[source_column]) if source_column < len(self.worksheet.column_headers) else "" for source_column in self.worksheet.table_view.visible_source_columns]
+        else:
+            headers = [
+                self._column_label(source_column)
+                for source_column in self.worksheet.table_view.visible_source_columns
+            ]
+        return [INDEX_COLUMN_HEADER] + headers
 
     def matrix(self) -> list[list[Any]]:
         """Return visible worksheet data with the row ID as the first column."""

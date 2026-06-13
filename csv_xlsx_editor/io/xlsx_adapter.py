@@ -56,11 +56,29 @@ class XlsxAdapter:
             source_sheet_name=sheet.title,
         )
 
-        for row in sheet.iter_rows():
+        header_cells: dict[int, CellData] = {}
+        headers: list[Any] = []
+
+        if sheet.max_row:
+            for cell in sheet[1]:
+                column_index = cell.column - 1
+                header_value = cell.value
+                headers.append(header_value)
+                header_cells[column_index] = CellData(
+                    value=header_value,
+                    formula=None,
+                    number_format=cell.number_format,
+                    style_id=cell.style_id,
+                    readonly_style_ref=copy(cell._style),
+                )
+
+        worksheet.set_headers(headers, header_cells=header_cells)
+
+        for row in sheet.iter_rows(min_row=2):
             for cell in row:
                 if cell.value is None:
                     continue
-                row_index = cell.row - 1
+                row_index = cell.row - 2
                 column_index = cell.column - 1
                 worksheet.cells[(row_index, column_index)] = CellData(
                     value=cell.value,
@@ -72,8 +90,8 @@ class XlsxAdapter:
                 worksheet.max_row = max(worksheet.max_row, row_index + 1)
                 worksheet.max_column = max(worksheet.max_column, column_index + 1)
 
-        worksheet.max_row = max(worksheet.max_row, sheet.max_row or 0)
-        worksheet.max_column = max(worksheet.max_column, sheet.max_column or 0)
+        worksheet.max_row = max(worksheet.max_row, max(sheet.max_row - 1, 0))
+        worksheet.max_column = max(worksheet.max_column, sheet.max_column or 0, len(headers))
         worksheet.rebuild_view()
         return worksheet
 
@@ -90,53 +108,47 @@ class XlsxAdapter:
 
     def _sync_worksheet(self, worksheet_document: WorksheetDocument, sheet: Worksheet) -> None:
         row_order = self._save_row_order(worksheet_document)
-        snapshot = self._snapshot_rows(sheet, worksheet_document.max_row, worksheet_document.max_column)
+        max_columns = max(worksheet_document.max_column, len(worksheet_document.column_headers))
+
+        if worksheet_document.column_headers:
+            header_row = 1
+            for column_index in range(max_columns):
+                target_cell = sheet.cell(row=header_row, column=column_index + 1)
+                header_value = (
+                    worksheet_document.column_headers[column_index]
+                    if column_index < len(worksheet_document.column_headers)
+                    else ""
+                )
+                header_cell = worksheet_document.header_cells.get(column_index)
+                self._write_header_cell(target_cell, header_value, header_cell)
 
         for target_row_index, source_row_index in enumerate(row_order, start=1):
-            source_row = snapshot.get(source_row_index, {})
-            for source_column_index in range(worksheet_document.max_column):
-                target_cell = sheet.cell(row=target_row_index, column=source_column_index + 1)
+            for source_column_index in range(max_columns):
+                target_cell = sheet.cell(row=target_row_index + 1, column=source_column_index + 1)
                 cell_data = worksheet_document.get_cell(source_row_index, source_column_index)
-                self._write_cell(target_cell, cell_data, source_row.get(source_column_index))
-
-    def _snapshot_rows(
-        self,
-        sheet: Worksheet,
-        max_row: int,
-        max_column: int,
-    ) -> dict[int, dict[int, dict[str, Any]]]:
-        snapshot: dict[int, dict[int, dict[str, Any]]] = {}
-        for row_index in range(max_row):
-            snapshot[row_index] = {}
-            for column_index in range(max_column):
-                cell = sheet.cell(row=row_index + 1, column=column_index + 1)
-                snapshot[row_index][column_index] = {
-                    "style": copy(cell._style),
-                    "number_format": cell.number_format,
-                    "font": copy(cell.font),
-                    "fill": copy(cell.fill),
-                    "border": copy(cell.border),
-                    "alignment": copy(cell.alignment),
-                    "protection": copy(cell.protection),
-                }
-        return snapshot
+                self._write_cell(target_cell, cell_data)
 
     def _write_cell(
         self,
         target_cell: Any,
         cell_data: CellData,
-        source_cell_snapshot: dict[str, Any] | None,
     ) -> None:
         target_cell.value = cell_data.formula or cell_data.value
-        if source_cell_snapshot is None:
+        if cell_data.readonly_style_ref is None:
             return
-        target_cell._style = copy(source_cell_snapshot["style"])
-        target_cell.number_format = source_cell_snapshot["number_format"]
-        target_cell.font = copy(source_cell_snapshot["font"])
-        target_cell.fill = copy(source_cell_snapshot["fill"])
-        target_cell.border = copy(source_cell_snapshot["border"])
-        target_cell.alignment = copy(source_cell_snapshot["alignment"])
-        target_cell.protection = copy(source_cell_snapshot["protection"])
+        target_cell._style = copy(cell_data.readonly_style_ref)
+        target_cell.number_format = cell_data.number_format
+
+    def _write_header_cell(
+        self,
+        target_cell: Any,
+        value: Any,
+        header_cell: CellData | None,
+    ) -> None:
+        target_cell.value = value
+        if header_cell is not None:
+            target_cell._style = copy(header_cell.readonly_style_ref)
+            target_cell.number_format = header_cell.number_format
 
     @staticmethod
     def _save_row_order(worksheet: WorksheetDocument) -> list[int]:

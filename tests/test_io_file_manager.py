@@ -29,7 +29,8 @@ class FileManagerTests(unittest.TestCase):
             document = FileManager().open(path)
 
             self.assertEqual(document.file_type, "csv")
-            self.assertEqual(document.get_active_sheet().get_cell(0, 0).value, "A")
+            self.assertEqual(document.get_active_sheet().column_headers, ["A", "B"])
+            self.assertEqual(document.get_active_sheet().max_row, 0)
 
 
 if __name__ == "__main__":

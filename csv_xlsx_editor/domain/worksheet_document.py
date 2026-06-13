@@ -17,6 +17,8 @@ class WorksheetSnapshot:
     """Immutable-style copy of worksheet state used for undo and redo."""
 
     cells: dict[CellAddress, CellData]
+    column_headers: list[Any]
+    header_cells: dict[int, CellData]
     max_row: int
     max_column: int
     sort_state: SortState | None
@@ -30,6 +32,8 @@ class WorksheetDocument:
     sheet_id: str
     title: str
     source_sheet_name: str | None = None
+    column_headers: list[Any] = field(default_factory=list)
+    header_cells: dict[int, CellData] = field(default_factory=dict)
     cells: dict[CellAddress, CellData] = field(default_factory=dict)
     max_row: int = 0
     max_column: int = 0
@@ -63,6 +67,13 @@ class WorksheetDocument:
         self.max_column = max(self.max_column, column + 1)
         self.rebuild_view()
 
+    def set_headers(self, headers: list[Any], header_cells: dict[int, CellData] | None = None) -> None:
+        """Set the worksheet column headers and optional style metadata."""
+        self.column_headers = list(headers)
+        self.header_cells = {column: deepcopy(cell) for column, cell in (header_cells or {}).items()}
+        self.max_column = max(self.max_column, len(self.column_headers))
+        self.rebuild_view()
+
     def set_cells(self, start_row: int, start_column: int, matrix: list[list[Any]]) -> None:
         """Paste a rectangular matrix of values at zero-based source coordinates."""
         if not matrix:
@@ -88,6 +99,8 @@ class WorksheetDocument:
         """Create a snapshot of the complete worksheet state."""
         return WorksheetSnapshot(
             cells={address: deepcopy(cell) for address, cell in self.cells.items()},
+            column_headers=deepcopy(self.column_headers),
+            header_cells={column: deepcopy(cell) for column, cell in self.header_cells.items()},
             max_row=self.max_row,
             max_column=self.max_column,
             sort_state=deepcopy(self.sort_state),
@@ -97,6 +110,8 @@ class WorksheetDocument:
     def restore_state(self, snapshot: WorksheetSnapshot) -> None:
         """Replace the worksheet state with a previously captured snapshot."""
         self.cells = {address: deepcopy(cell) for address, cell in snapshot.cells.items()}
+        self.column_headers = deepcopy(snapshot.column_headers)
+        self.header_cells = {column: deepcopy(cell) for column, cell in snapshot.header_cells.items()}
         self.max_row = snapshot.max_row
         self.max_column = snapshot.max_column
         self.sort_state = deepcopy(snapshot.sort_state)

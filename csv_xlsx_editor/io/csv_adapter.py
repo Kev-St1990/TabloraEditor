@@ -41,11 +41,20 @@ class CsvAdapter:
         )
         with file_path.open(encoding=encoding, newline="") as file:
             reader = csv.reader(file, delimiter=selected_delimiter, quotechar=dialect.quotechar)
-            for row_index, row in enumerate(reader):
-                for column_index, value in enumerate(row):
-                    worksheet.set_cell(row_index, column_index, value)
-                worksheet.max_column = max(worksheet.max_column, len(row))
-            worksheet.max_row = max(worksheet.max_row, row_index + 1) if "row_index" in locals() else 0
+            rows = list(reader)
+
+        if rows:
+            header_row = rows[0]
+            worksheet.set_headers(header_row)
+            data_rows = rows[1:]
+        else:
+            data_rows = []
+
+        for row_index, row in enumerate(data_rows):
+            for column_index, value in enumerate(row):
+                worksheet.set_cell(row_index, column_index, value)
+            worksheet.max_column = max(worksheet.max_column, len(row))
+        worksheet.max_row = len(data_rows)
         worksheet.rebuild_view()
 
         return WorkbookDocument(
@@ -74,6 +83,8 @@ class CsvAdapter:
 
         with file_path.open("w", encoding=encoding, newline="") as file:
             writer = csv.writer(file, delimiter=selected_delimiter)
+            if worksheet.column_headers:
+                writer.writerow([worksheet.column_headers[column] if column < len(worksheet.column_headers) else "" for column in range(worksheet.max_column)])
             for source_row in self._save_row_order(worksheet):
                 writer.writerow(
                     [

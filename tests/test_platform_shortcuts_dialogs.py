@@ -7,6 +7,7 @@ from unittest.mock import patch
 from csv_xlsx_editor.platform.dialogs import DialogService
 from csv_xlsx_editor.platform.shortcuts import ShortcutManager
 from csv_xlsx_editor.ui.menu_bar import MenuBar
+from csv_xlsx_editor.ui.sheet_view import SheetView
 
 
 @dataclass
@@ -38,6 +39,16 @@ class RecordingMenu:
 
     def add_cascade(self, *, label: str, menu: object) -> None:
         self.cascades.append((label, menu))
+
+
+@dataclass
+class RecordingSheetWidget:
+    """Capture context-menu registrations."""
+
+    commands: list[tuple[str, object, dict[str, object]]] = field(default_factory=list)
+
+    def popup_menu_add_command(self, label: str, command: object, **kwargs: object) -> None:
+        self.commands.append((label, command, kwargs))
 
 
 @dataclass
@@ -140,7 +151,21 @@ class ShortcutAndDialogTests(unittest.TestCase):
             menu = MenuBar(FakeApp()).attach_to(root)
 
         self.assertIs(root.menu, menu)
-        self.assertEqual(len(menu.cascades), 3)
+        self.assertEqual(len(menu.cascades), 2)
+
+    def test_sheet_view_registers_header_context_actions(self) -> None:
+        sheet_view = SheetView.__new__(SheetView)
+        sheet_view.sheet = RecordingSheetWidget()
+
+        callback = lambda: None
+        sheet_view.add_header_context_action("Filter Selected Column...", callback)
+
+        self.assertEqual(len(sheet_view.sheet.commands), 1)
+        label, stored_callback, kwargs = sheet_view.sheet.commands[0]
+        self.assertEqual(label, "Filter Selected Column...")
+        self.assertIs(stored_callback, callback)
+        self.assertEqual(kwargs["header_menu"], True)
+        self.assertEqual(kwargs["table_menu"], False)
 
 
 if __name__ == "__main__":

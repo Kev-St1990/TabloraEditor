@@ -165,6 +165,8 @@ class CsvXlsxEditorApp(tk.Tk):
             undo_redo_manager=self.undo_redo_manager,
             sheet_view=self.sheet_manager.sheet_view,
         )
+        self.sheet_manager.sheet_view.add_header_context_action("Filter Selected Column...", self.on_filter_selected_column)
+        self.sheet_manager.sheet_view.add_header_context_action("Clear Filters", self.on_clear_filters)
 
     def _ensure_header_controller(self) -> HeaderController | None:
         if self.current_document is None:

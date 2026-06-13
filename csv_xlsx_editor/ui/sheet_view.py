@@ -75,6 +75,22 @@ class SheetView(Frame):
                         continue
                 break
 
+    def add_header_context_action(self, label: str, callback: Any) -> None:
+        """Register a header-only action in the sheet's context menu."""
+        delete_command = getattr(self.sheet, "popup_menu_del_command", None)
+        add_command = getattr(self.sheet, "popup_menu_add_command", None)
+        if callable(delete_command):
+            delete_command(label)
+        if callable(add_command):
+            add_command(
+                label,
+                callback,
+                table_menu=False,
+                index_menu=False,
+                header_menu=True,
+                empty_space_menu=False,
+            )
+
     def get_selected_ui_column(self, *, default: int = 1) -> int | None:
         """Return the primary selected UI column, skipping the synthetic index column."""
         selected = getattr(self.sheet, "get_currently_selected", None)

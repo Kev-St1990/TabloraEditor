@@ -4,9 +4,11 @@ import tkinter as tk
 
 from csv_xlsx_editor.config import APP_NAME
 from csv_xlsx_editor.actions import UndoRedoManager
-from csv_xlsx_editor.domain import WorkbookDocument
+from csv_xlsx_editor.domain import FilterState, WorkbookDocument
 from csv_xlsx_editor.io import FileManager
 from csv_xlsx_editor.platform import ClipboardService, DialogService, InMemoryClipboardBackend, ShortcutManager
+from csv_xlsx_editor.ui.filter_dialog import FilterDialog
+from csv_xlsx_editor.ui.header_controller import HeaderController
 from csv_xlsx_editor.ui.menu_bar import MenuBar
 from csv_xlsx_editor.ui.sheet_manager import SheetManager
 
@@ -30,6 +32,7 @@ class CsvXlsxEditorApp(tk.Tk):
         self.clipboard = ClipboardService(InMemoryClipboardBackend())
         self.undo_redo_manager = UndoRedoManager()
         self.current_document: WorkbookDocument | None = None
+        self.header_controller: HeaderController | None = None
 
         self.sheet_manager = SheetManager(self)
         self.sheet_manager.pack(fill="both", expand=True)
@@ -44,6 +47,7 @@ class CsvXlsxEditorApp(tk.Tk):
         try:
             self.current_document = self.file_manager.open(path)
             self.sheet_manager.sheet_view.load_worksheet(self.current_document.get_active_sheet())
+            self._install_header_controller()
             self.undo_redo_manager.clear()
         except Exception as exc:  # pragma: no cover - routed through messagebox in real UI
             self.dialogs.show_error_message("Open file failed", str(exc))
@@ -113,6 +117,29 @@ class CsvXlsxEditorApp(tk.Tk):
             self.sheet_manager.sheet_view.refresh()
         return event
 
+    def on_filter_selected_column(self, event: object | None = None) -> object | None:
+        """Open the filter dialog for the selected data column."""
+        controller = self._ensure_header_controller()
+        if controller is None:
+            return event
+
+        ui_column = self.sheet_manager.sheet_view.get_selected_ui_column()
+        if ui_column is None or ui_column <= 0:
+            return event
+
+        popup_state = controller.build_filter_popup_state(ui_column - 1)
+        dialog = FilterDialog(self, popup_state, on_apply=controller.apply_filter_popup_state)
+        dialog.wait_window()
+        return event
+
+    def on_clear_filters(self, event: object | None = None) -> object | None:
+        """Clear all active column filters from the current worksheet."""
+        controller = self._ensure_header_controller()
+        if controller is None:
+            return event
+        controller.apply_filter_state(FilterState())
+        return event
+
     def on_exit(self, event: object | None = None) -> object | None:
         """Close the application."""
         self.destroy()
@@ -127,3 +154,21 @@ class CsvXlsxEditorApp(tk.Tk):
             row_values = [worksheet.get_cell(row_index, column).value for column in range(worksheet.max_column)]
             matrix.append(row_values)
         return matrix
+
+    def _install_header_controller(self) -> None:
+        if self.current_document is None:
+            self.header_controller = None
+            return
+        self.header_controller = HeaderController(
+            worksheet=self.current_document.get_active_sheet(),
+            workbook=self.current_document,
+            undo_redo_manager=self.undo_redo_manager,
+            sheet_view=self.sheet_manager.sheet_view,
+        )
+
+    def _ensure_header_controller(self) -> HeaderController | None:
+        if self.current_document is None:
+            return None
+        if self.header_controller is None or self.header_controller.worksheet is not self.current_document.get_active_sheet():
+            self._install_header_controller()
+        return self.header_controller

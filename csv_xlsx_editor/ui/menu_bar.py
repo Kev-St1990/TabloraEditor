@@ -32,5 +32,10 @@ class MenuBar:
         edit_menu.add_command(label="Paste", command=self.app.on_paste)
         menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
+        data_menu = Menu(menu_bar, tearoff=0)
+        data_menu.add_command(label="Filter Selected Column...", command=self.app.on_filter_selected_column)
+        data_menu.add_command(label="Clear Filters", command=self.app.on_clear_filters)
+        menu_bar.add_cascade(label="Data", menu=data_menu)
+
         root.config(menu=menu_bar)
         return menu_bar

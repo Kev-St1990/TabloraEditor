@@ -132,13 +132,15 @@ class ShortcutAndDialogTests(unittest.TestCase):
             def on_redo(self, event=None): ...
             def on_copy(self, event=None): ...
             def on_paste(self, event=None): ...
+            def on_filter_selected_column(self, event=None): ...
+            def on_clear_filters(self, event=None): ...
 
         with patch("tkinter.Menu", RecordingMenu):
             root = RecordingRoot()
             menu = MenuBar(FakeApp()).attach_to(root)
 
         self.assertIs(root.menu, menu)
-        self.assertEqual(len(menu.cascades), 2)
+        self.assertEqual(len(menu.cascades), 3)
 
 
 if __name__ == "__main__":

@@ -75,6 +75,29 @@ class SheetView(Frame):
                         continue
                 break
 
+    def get_selected_ui_column(self, *, default: int = 1) -> int | None:
+        """Return the primary selected UI column, skipping the synthetic index column."""
+        selected = getattr(self.sheet, "get_currently_selected", None)
+        if callable(selected):
+            current = selected()
+            if current is not None:
+                column = getattr(current, "column", None)
+                if isinstance(column, int) and column > 0:
+                    return column
+
+        selected_columns = getattr(self.sheet, "get_selected_columns", None)
+        if callable(selected_columns):
+            columns = selected_columns()
+            for column in columns or ():
+                if isinstance(column, int) and column > 0:
+                    return column
+
+        if self.worksheet is None:
+            return None
+        if self.worksheet.max_column <= 0:
+            return None
+        return min(max(default, 1), self.worksheet.max_column)
+
     def _set_sheet_data(self, matrix: list[list[Any]], headers: list[str]) -> None:
         if hasattr(self.sheet, "set_sheet_data"):
             self.sheet.set_sheet_data(matrix, reset_col_positions=True, reset_row_positions=True)

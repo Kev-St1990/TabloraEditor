@@ -97,6 +97,21 @@ class HeaderControllerTests(unittest.TestCase):
         controller.undo_redo_manager.undo()
         self.assertEqual(workbook_worksheet.get_display_rows(), [0, 1, 2])
 
+    def test_apply_column_value_sort_sorts_values_without_reordering_rows(self) -> None:
+        worksheet = self.make_worksheet()
+        controller = HeaderController(
+            worksheet=worksheet,
+            undo_redo_manager=UndoRedoManager(),
+        )
+
+        controller.apply_column_value_sort(0, reverse=False)
+
+        self.assertEqual(
+            [worksheet.get_cell(row, 0).value for row in range(3)],
+            ["Alice", "Bob", "Charlie"],
+        )
+        self.assertEqual(worksheet.get_display_rows(), [0, 1, 2])
+
     def test_autosize_uses_visible_values_and_header_text(self) -> None:
         worksheet = self.make_worksheet()
         sheet_view = RecordingSheetView()

@@ -62,6 +62,35 @@ class CsvAdapterTests(unittest.TestCase):
                 ],
             )
 
+    def test_save_materializes_date_sort_order(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            source = Path(temp_dir) / "dates.csv"
+            target = Path(temp_dir) / "dates_sorted.csv"
+            source.write_text(
+                "date\n31.12.2024\n2024-01-02\n15/01/2024 08:30\n",
+                encoding="utf-8-sig",
+            )
+
+            adapter = CsvAdapter()
+            document = adapter.load(source)
+            sheet = document.get_active_sheet()
+            sheet.apply_sort(SortState(column=0, direction="asc"))
+
+            adapter.save(document, target)
+
+            with target.open(encoding="utf-8-sig", newline="") as file:
+                rows = list(csv.reader(file))
+
+            self.assertEqual(
+                rows,
+                [
+                    ["date"],
+                    ["2024-01-02"],
+                    ["15/01/2024 08:30"],
+                    ["31.12.2024"],
+                ],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

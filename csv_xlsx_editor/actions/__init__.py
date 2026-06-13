@@ -5,6 +5,7 @@ from csv_xlsx_editor.actions.edit_cell_command import EditCellCommand
 from csv_xlsx_editor.actions.filter_command import FilterCommand
 from csv_xlsx_editor.actions.paste_range_command import PasteRangeCommand
 from csv_xlsx_editor.actions.sort_command import SortCommand
+from csv_xlsx_editor.actions.sort_values_command import SortValuesCommand
 from csv_xlsx_editor.actions.undo_redo_manager import UndoRedoManager
 
 __all__ = [
@@ -13,5 +14,6 @@ __all__ = [
     "FilterCommand",
     "PasteRangeCommand",
     "SortCommand",
+    "SortValuesCommand",
     "UndoRedoManager",
 ]

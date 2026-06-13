@@ -7,6 +7,7 @@ from csv_xlsx_editor.actions import (
     FilterCommand,
     PasteRangeCommand,
     SortCommand,
+    SortValuesCommand,
     UndoRedoManager,
 )
 from csv_xlsx_editor.domain import FilterState, SortState, WorkbookDocument, WorksheetDocument
@@ -89,6 +90,25 @@ class UndoRedoCommandTests(unittest.TestCase):
         self.assertEqual(worksheet.get_display_rows(), [1, 2, 0])
         manager.redo()
         self.assertEqual(worksheet.get_display_rows(), [1])
+
+    def test_sort_values_command_sorts_one_column_and_supports_undo(self) -> None:
+        workbook, worksheet = self.make_workbook()
+        manager = UndoRedoManager()
+
+        command = SortValuesCommand(worksheet=worksheet, column=0, reverse=False, workbook=workbook)
+        manager.execute(command)
+
+        self.assertEqual(
+            [worksheet.get_cell(row, 0).value for row in range(3)],
+            ["Alice", "Bob", "Charlie"],
+        )
+        self.assertEqual(command.description(), "Sort values column 1 asc")
+
+        manager.undo()
+        self.assertEqual(
+            [worksheet.get_cell(row, 0).value for row in range(3)],
+            ["Charlie", "Alice", "Bob"],
+        )
 
     def test_new_execute_clears_redo_stack(self) -> None:
         workbook, worksheet = self.make_workbook()

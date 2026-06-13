@@ -46,6 +46,8 @@ class RecordingSheetWidget:
     """Capture context-menu registrations."""
 
     commands: list[tuple[str, object, dict[str, object]]] = field(default_factory=list)
+    MT: object | None = None
+    CH: object | None = None
 
     def popup_menu_add_command(self, label: str, command: object, **kwargs: object) -> None:
         self.commands.append((label, command, kwargs))
@@ -166,6 +168,47 @@ class ShortcutAndDialogTests(unittest.TestCase):
         self.assertIs(stored_callback, callback)
         self.assertEqual(kwargs["header_menu"], True)
         self.assertEqual(kwargs["table_menu"], False)
+
+    def test_sheet_view_registers_menu_icons(self) -> None:
+        sheet_view = SheetView.__new__(SheetView)
+        sheet_view.sheet = RecordingSheetWidget()
+
+        callback = lambda: None
+        sheet_view.add_header_context_action(
+            "Sort values Asc.",
+            callback,
+            image="icon-asc",
+            compound="left",
+            accelerator="Ctrl+Shift+S",
+        )
+
+        self.assertEqual(sheet_view.sheet.commands[0][2]["image"], "icon-asc")
+        self.assertEqual(sheet_view.sheet.commands[0][2]["compound"], "left")
+        self.assertEqual(sheet_view.sheet.commands[0][2]["accelerator"], "Ctrl+Shift+S")
+
+    def test_sheet_view_can_disable_builtin_sort_actions(self) -> None:
+        @dataclass
+        class HeaderTable:
+            rc_sort_column_enabled: bool = True
+            rc_sort_rows_enabled: bool = True
+
+        sheet_view = SheetView.__new__(SheetView)
+        sheet_view.sheet = RecordingSheetWidget(MT=HeaderTable())
+
+        sheet_view.set_builtin_header_sort_actions_enabled(False)
+
+        self.assertFalse(sheet_view.sheet.MT.rc_sort_column_enabled)
+        self.assertFalse(sheet_view.sheet.MT.rc_sort_rows_enabled)
+
+    def test_sheet_view_uses_header_context_column_when_present(self) -> None:
+        @dataclass
+        class HeaderCanvas:
+            popup_menu_loc: int = 3
+
+        sheet_view = SheetView.__new__(SheetView)
+        sheet_view.sheet = RecordingSheetWidget(CH=HeaderCanvas())
+
+        self.assertEqual(sheet_view.get_header_context_ui_column(), 3)
 
 
 if __name__ == "__main__":

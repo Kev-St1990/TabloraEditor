@@ -114,5 +114,5 @@ class CsvAdapter:
         rows = list(range(worksheet.max_row))
         reverse = worksheet.sort_state.direction == "desc"
         column = worksheet.sort_state.column
-        rows.sort(key=lambda row: WorksheetDocument._sort_key(worksheet.get_cell(row, column).value), reverse=reverse)
+        rows.sort(key=lambda row: WorksheetDocument._sort_key_for_cell(worksheet.get_cell(row, column)), reverse=reverse)
         return rows

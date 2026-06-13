@@ -4,7 +4,7 @@ import tkinter as tk
 
 from csv_xlsx_editor.config import APP_NAME
 from csv_xlsx_editor.actions import UndoRedoManager
-from csv_xlsx_editor.domain import FilterState, WorkbookDocument
+from csv_xlsx_editor.domain import FilterState, SortState, WorkbookDocument
 from csv_xlsx_editor.io import FileManager
 from csv_xlsx_editor.platform import ClipboardService, DialogService, InMemoryClipboardBackend, ShortcutManager
 from csv_xlsx_editor.ui.filter_dialog import FilterDialog
@@ -123,7 +123,7 @@ class CsvXlsxEditorApp(tk.Tk):
         if controller is None:
             return event
 
-        ui_column = self.sheet_manager.sheet_view.get_selected_ui_column()
+        ui_column = self.sheet_manager.sheet_view.get_header_context_ui_column()
         if ui_column is None or ui_column <= 0:
             return event
 
@@ -139,6 +139,22 @@ class CsvXlsxEditorApp(tk.Tk):
             return event
         controller.apply_filter_state(FilterState())
         return event
+
+    def on_sort_selected_column_ascending(self, event: object | None = None) -> object | None:
+        """Sort the selected data column in ascending order."""
+        return self._sort_selected_rows("asc", event)
+
+    def on_sort_selected_column_descending(self, event: object | None = None) -> object | None:
+        """Sort the selected data column in descending order."""
+        return self._sort_selected_rows("desc", event)
+
+    def on_sort_selected_values_ascending(self, event: object | None = None) -> object | None:
+        """Sort the selected column values in ascending order."""
+        return self._sort_selected_values("asc", event)
+
+    def on_sort_selected_values_descending(self, event: object | None = None) -> object | None:
+        """Sort the selected column values in descending order."""
+        return self._sort_selected_values("desc", event)
 
     def on_exit(self, event: object | None = None) -> object | None:
         """Close the application."""
@@ -165,7 +181,16 @@ class CsvXlsxEditorApp(tk.Tk):
             undo_redo_manager=self.undo_redo_manager,
             sheet_view=self.sheet_manager.sheet_view,
         )
-        self.sheet_manager.sheet_view.add_header_context_action("Filter Selected Column...", self.on_filter_selected_column)
+        self.sheet_manager.sheet_view.set_builtin_header_sort_actions_enabled(True)
+        self._bind_tksheet_header_sort_proxies()
+        self.sheet_manager.sheet_view.sheet.popup_menu_del_command("Sort rows Asc.")
+        self.sheet_manager.sheet_view.sheet.popup_menu_del_command("Sort rows Desc.")
+        self.sheet_manager.sheet_view.sheet.popup_menu_del_command("Sort values Asc.")
+        self.sheet_manager.sheet_view.sheet.popup_menu_del_command("Sort values Desc.")
+        self.sheet_manager.sheet_view.add_header_context_action(
+            "Filter Selected Column...",
+            self.on_filter_selected_column,
+        )
         self.sheet_manager.sheet_view.add_header_context_action("Clear Filters", self.on_clear_filters)
 
     def _ensure_header_controller(self) -> HeaderController | None:
@@ -174,3 +199,59 @@ class CsvXlsxEditorApp(tk.Tk):
         if self.header_controller is None or self.header_controller.worksheet is not self.current_document.get_active_sheet():
             self._install_header_controller()
         return self.header_controller
+
+    def _sort_selected_column(self, direction: str, event: object | None = None) -> object | None:
+        controller = self._ensure_header_controller()
+        if controller is None:
+            return event
+        ui_column = self.sheet_manager.sheet_view.get_header_context_ui_column()
+        if ui_column is None or ui_column <= 0:
+            return event
+        controller.apply_sort(SortState(column=ui_column - 1, direction=direction))
+        return event
+
+    def _sort_selected_rows(self, direction: str, event: object | None = None) -> object | None:
+        return self._sort_selected_column(direction, event)
+
+    def _sort_selected_values(self, direction: str, event: object | None = None) -> object | None:
+        controller = self._ensure_header_controller()
+        if controller is None:
+            return event
+        ui_column = self.sheet_manager.sheet_view.get_header_context_ui_column()
+        if ui_column is None or ui_column <= 0:
+            return event
+        controller.apply_column_value_sort(ui_column - 1, reverse=direction == "desc")
+        return event
+
+    def _bind_tksheet_header_sort_proxies(self) -> None:
+        header_canvas = getattr(self.sheet_manager.sheet_view.sheet, "CH", None)
+        if header_canvas is None:
+            return
+        header_canvas._sort_columns = self._tksheet_sort_values_proxy
+        header_canvas._sort_rows_by_column = self._tksheet_sort_rows_proxy
+
+    def _tksheet_sort_values_proxy(
+        self,
+        event: object | None = None,
+        columns: object | None = None,
+        reverse: bool = False,
+        validation: bool = True,
+        key: object | None = None,
+        undo: bool = True,
+    ) -> object | None:
+        return self._sort_selected_values("desc" if reverse else "asc", event)
+
+    def _tksheet_sort_rows_proxy(
+        self,
+        event: object | None = None,
+        column: int | None = None,
+        reverse: bool = False,
+        key: object | None = None,
+        undo: bool = True,
+    ) -> object | None:
+        return self._sort_selected_column("desc" if reverse else "asc", event)
+
+    def _sheet_ops(self) -> object:
+        sheet_widget = self.sheet_manager.sheet_view.sheet
+        sheet_par = getattr(sheet_widget, "PAR", None)
+        return getattr(sheet_par, "ops", None)

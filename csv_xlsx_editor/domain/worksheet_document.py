@@ -2,6 +2,8 @@
 
 from dataclasses import dataclass, field
 from copy import deepcopy
+from datetime import date, datetime, time
+import re
 from typing import Any, TypeAlias
 
 from csv_xlsx_editor.domain.cell_data import CellData
@@ -10,6 +12,83 @@ from csv_xlsx_editor.domain.sort_state import SortState
 from csv_xlsx_editor.domain.table_view import TableView
 
 CellAddress: TypeAlias = tuple[int, int]
+
+_DATE_PATTERNS = (
+    "%Y-%m-%d",
+    "%Y/%m/%d",
+    "%Y.%m.%d",
+    "%d.%m.%Y",
+    "%d/%m/%Y",
+    "%d-%m-%Y",
+    "%m/%d/%Y",
+    "%m-%d-%Y",
+    "%Y-%m-%d %H:%M",
+    "%Y-%m-%d %H:%M:%S",
+    "%d.%m.%Y %H:%M",
+    "%d.%m.%Y %H:%M:%S",
+    "%d/%m/%Y %H:%M",
+    "%d/%m/%Y %H:%M:%S",
+    "%m/%d/%Y %H:%M",
+    "%m/%d/%Y %H:%M:%S",
+    "%Y-%m-%dT%H:%M",
+    "%Y-%m-%dT%H:%M:%S",
+)
+
+_ENGLISH_MONTHS = {
+    "jan": 1,
+    "january": 1,
+    "feb": 2,
+    "february": 2,
+    "mar": 3,
+    "march": 3,
+    "apr": 4,
+    "april": 4,
+    "may": 5,
+    "jun": 6,
+    "june": 6,
+    "jul": 7,
+    "july": 7,
+    "aug": 8,
+    "august": 8,
+    "sep": 9,
+    "sept": 9,
+    "september": 9,
+    "oct": 10,
+    "october": 10,
+    "nov": 11,
+    "november": 11,
+    "dec": 12,
+    "december": 12,
+}
+
+_GERMAN_MONTHS = {
+    "jan": 1,
+    "januar": 1,
+    "feb": 2,
+    "februar": 2,
+    "mär": 3,
+    "maerz": 3,
+    "märz": 3,
+    "mrz": 3,
+    "apr": 4,
+    "april": 4,
+    "mai": 5,
+    "jun": 6,
+    "juni": 6,
+    "jul": 7,
+    "juli": 7,
+    "aug": 8,
+    "august": 8,
+    "sep": 9,
+    "sept": 9,
+    "september": 9,
+    "okt": 10,
+    "oktober": 10,
+    "nov": 11,
+    "november": 11,
+    "dez": 12,
+    "dezember": 12,
+}
 
 
 @dataclass(slots=True)
@@ -134,7 +213,7 @@ class WorksheetDocument:
         if self.sort_state is not None:
             reverse = self.sort_state.direction == "desc"
             column = self.sort_state.column
-            rows.sort(key=lambda row: self._sort_key(self.get_cell(row, column).value), reverse=reverse)
+            rows.sort(key=lambda row: self._sort_key_for_cell(self.get_cell(row, column)), reverse=reverse)
 
         self.table_view = TableView(
             visible_source_rows=rows,
@@ -145,6 +224,25 @@ class WorksheetDocument:
     def apply_sort(self, sort_state: SortState | None) -> None:
         """Update sort state and rebuild the visible table view."""
         self.sort_state = sort_state
+        self.rebuild_view()
+
+    def sort_column_values(self, column: int, *, reverse: bool = False) -> None:
+        """Sort the values of one source column without changing row order."""
+        if column < 0:
+            raise ValueError("Column must be zero-based positive integer.")
+
+        column_cells = [deepcopy(self.get_cell(row, column)) for row in range(self.max_row)]
+        sorted_cells = sorted(column_cells, key=self._sort_key_for_cell, reverse=reverse)
+        self.sort_state = None
+
+        for row in range(self.max_row):
+            self.cells.pop((row, column), None)
+
+        for row, cell in enumerate(sorted_cells):
+            if cell.value is None and cell.formula is None and cell.number_format is None and cell.style_id is None:
+                continue
+            self.cells[(row, column)] = cell
+
         self.rebuild_view()
 
     def apply_filter(self, filter_state: FilterState) -> None:
@@ -166,7 +264,126 @@ class WorksheetDocument:
             raise ValueError("Cell coordinates must be zero-based positive integers.")
 
     @staticmethod
-    def _sort_key(value: Any) -> tuple[int, str]:
+    def _sort_key_for_cell(cell: CellData) -> tuple[int, Any]:
+        value = cell.value
         if value is None or value == "":
-            return (1, "")
-        return (0, str(value).casefold())
+            return (3, "")
+
+        parsed_date = WorksheetDocument._coerce_datetime(value, cell.number_format)
+        if parsed_date is not None:
+            return (0, parsed_date)
+
+        parsed_number = WorksheetDocument._coerce_number(value)
+        if parsed_number is not None:
+            return (1, parsed_number)
+
+        return (2, str(value).casefold())
+
+    @staticmethod
+    def _sort_key(value: Any) -> tuple[int, Any]:
+        return WorksheetDocument._sort_key_for_cell(CellData(value=value))
+
+    @staticmethod
+    def _coerce_datetime(value: Any, number_format: str | None = None) -> datetime | None:
+        if isinstance(value, datetime):
+            return value.replace(tzinfo=None)
+        if isinstance(value, date):
+            return datetime.combine(value, time.min)
+        if not isinstance(value, str):
+            return None
+
+        text = value.strip()
+        if not text:
+            return None
+
+        candidates = WorksheetDocument._date_patterns_for_number_format(number_format)
+        for pattern in candidates:
+            try:
+                return datetime.strptime(text, pattern)
+            except ValueError:
+                continue
+
+        parsed_month_name = WorksheetDocument._parse_english_month_date(text)
+        if parsed_month_name is not None:
+            return parsed_month_name
+
+        try:
+            return datetime.fromisoformat(text)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _parse_english_month_date(text: str) -> datetime | None:
+        match = re.fullmatch(
+            r"(?P<day>\d{1,2})\s+(?P<month>[A-Za-zÄÖÜäöüß]{3,12})\.?\s+(?P<year>\d{4})(?:\s+(?P<hour>\d{1,2}):(?P<minute>\d{2})(?::(?P<second>\d{2}))?)?",
+            text,
+        )
+        if match is None:
+            return None
+
+        month_key = match.group("month").casefold()
+        month = _ENGLISH_MONTHS.get(month_key) or _GERMAN_MONTHS.get(month_key)
+        if month is None:
+            return None
+
+        day = int(match.group("day"))
+        year = int(match.group("year"))
+        hour = int(match.group("hour") or 0)
+        minute = int(match.group("minute") or 0)
+        second = int(match.group("second") or 0)
+        try:
+            return datetime(year, month, day, hour, minute, second)
+        except ValueError:
+            return None
+
+    @staticmethod
+    def _coerce_number(value: Any) -> float | int | None:
+        if isinstance(value, bool):
+            return None
+        if isinstance(value, (int, float)):
+            return value
+        if not isinstance(value, str):
+            return None
+
+        text = value.strip()
+        if not text:
+            return None
+        if re.fullmatch(r"[-+]?\d+", text):
+            return int(text)
+        if re.fullmatch(r"[-+]?\d+[.,]\d+", text):
+            return float(text.replace(",", "."))
+        return None
+
+    @staticmethod
+    def _date_patterns_for_number_format(number_format: str | None) -> tuple[str, ...]:
+        if not number_format:
+            return _DATE_PATTERNS
+
+        fmt = number_format.casefold()
+        preferred: list[str] = []
+
+        def add_patterns(patterns: tuple[str, ...]) -> None:
+            for pattern in patterns:
+                if pattern not in preferred:
+                    preferred.append(pattern)
+
+        ymd_patterns = tuple(pattern for pattern in _DATE_PATTERNS if pattern.startswith("%Y"))
+        dmy_patterns = tuple(pattern for pattern in _DATE_PATTERNS if pattern.startswith("%d"))
+        mdy_patterns = tuple(pattern for pattern in _DATE_PATTERNS if pattern.startswith("%m"))
+
+        if "yyyy" in fmt:
+            add_patterns(ymd_patterns)
+
+        if "dd" in fmt and "mm" in fmt:
+            if fmt.index("dd") < fmt.index("mm"):
+                add_patterns(dmy_patterns)
+                add_patterns(mdy_patterns)
+            else:
+                add_patterns(mdy_patterns)
+                add_patterns(dmy_patterns)
+
+        if "yyyy" not in fmt and "dd" not in fmt and "mm" not in fmt:
+            add_patterns(_DATE_PATTERNS)
+
+        add_patterns(_DATE_PATTERNS)
+        return tuple(preferred)

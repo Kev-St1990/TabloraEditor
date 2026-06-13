@@ -75,7 +75,15 @@ class SheetView(Frame):
                         continue
                 break
 
-    def add_header_context_action(self, label: str, callback: Any) -> None:
+    def add_header_context_action(
+        self,
+        label: str,
+        callback: Any,
+        *,
+        image: Any = "",
+        compound: str | None = None,
+        accelerator: str | None = None,
+    ) -> None:
         """Register a header-only action in the sheet's context menu."""
         delete_command = getattr(self.sheet, "popup_menu_del_command", None)
         add_command = getattr(self.sheet, "popup_menu_add_command", None)
@@ -89,7 +97,28 @@ class SheetView(Frame):
                 index_menu=False,
                 header_menu=True,
                 empty_space_menu=False,
+                image=image,
+                compound=compound,
+                accelerator=accelerator,
             )
+
+    def set_builtin_header_sort_actions_enabled(self, enabled: bool) -> None:
+        """Enable or disable tksheet's built-in header sort menu items."""
+        mt = getattr(self.sheet, "MT", None)
+        if mt is None:
+            return
+        if hasattr(mt, "rc_sort_column_enabled"):
+            mt.rc_sort_column_enabled = enabled
+        if hasattr(mt, "rc_sort_rows_enabled"):
+            mt.rc_sort_rows_enabled = enabled
+
+    def get_header_context_ui_column(self) -> int | None:
+        """Return the header column targeted by the last context-menu invocation."""
+        header = getattr(self.sheet, "CH", None)
+        popup_menu_loc = getattr(header, "popup_menu_loc", None)
+        if isinstance(popup_menu_loc, int):
+            return popup_menu_loc
+        return self.get_selected_ui_column()
 
     def get_selected_ui_column(self, *, default: int = 1) -> int | None:
         """Return the primary selected UI column, skipping the synthetic index column."""

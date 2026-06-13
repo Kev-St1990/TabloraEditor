@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from csv_xlsx_editor.actions import FilterCommand, SortCommand, UndoRedoManager
+from csv_xlsx_editor.actions import FilterCommand, SortCommand, SortValuesCommand, UndoRedoManager
 from csv_xlsx_editor.domain import (
     FilterState,
     SortState,
@@ -106,6 +106,16 @@ class HeaderController:
         command = FilterCommand(
             worksheet=self.worksheet,
             filter_state=filter_state,
+            workbook=self.workbook,
+        )
+        self._execute(command)
+
+    def apply_column_value_sort(self, source_column: int, *, reverse: bool = False) -> None:
+        """Sort values inside one column without changing row order."""
+        command = SortValuesCommand(
+            worksheet=self.worksheet,
+            column=source_column,
+            reverse=reverse,
             workbook=self.workbook,
         )
         self._execute(command)

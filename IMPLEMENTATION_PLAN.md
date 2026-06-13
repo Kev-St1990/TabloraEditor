@@ -21,7 +21,7 @@ Statuswerte:
 | 5. Excel-kompatibles Copy/Paste ergänzen | Erledigt | Clipboard-Service mit TSV-Serialisierung und Range-Paste-Helfern | Unit-Tests für TSV Parse/Serialize und Range-Paste bestanden | Mac/Windows-Zeilenumbrüche beachten |
 | 6. Undo/Redo-Command-System hinzufügen | Erledigt | Reversible Commands für Edit, Paste, Sort, Filter und Stack-Management implementiert | Unit-Tests für Execute/Undo/Redo, Redo-Invalidierung und Dirty-State bestanden | Keine UI-Logik in Commands |
 | 7. Header-Controller und Filter-Popup anbinden | Erledigt | Linksklick-Sortierung, Doppelklick-Autosize, Rechtsklick-Filter und Popup-State-Handling implementiert | Unit-Tests für Controller-Logik und Popup-State bestanden | Filter entfernt beim Speichern keine Daten |
-| 8. Plattformintegration finalisieren | Offen | Menüs, Dateidialoge, Shortcuts für macOS/Windows | Unit-Tests für Shortcut-Auswahl; manueller Smoke-Test | `Command` auf macOS, `Control` auf Windows |
+| 8. Plattformintegration finalisieren | Erledigt | Menüs, Dateidialoge, Shortcuts für macOS/Windows und App-Komposition finalisiert | Unit-Tests für Shortcut-Auswahl, Dialog-Filters und Menü-Anbindung bestanden | `Command` auf macOS, `Control` auf Windows |
 
 ## Umsetzungsgates
 

@@ -11,6 +11,12 @@ class PackageStructureTests(unittest.TestCase):
         modules = [
             "csv_xlsx_editor",
             "csv_xlsx_editor.actions",
+            "csv_xlsx_editor.actions.command",
+            "csv_xlsx_editor.actions.edit_cell_command",
+            "csv_xlsx_editor.actions.filter_command",
+            "csv_xlsx_editor.actions.paste_range_command",
+            "csv_xlsx_editor.actions.sort_command",
+            "csv_xlsx_editor.actions.undo_redo_manager",
             "csv_xlsx_editor.domain",
             "csv_xlsx_editor.domain.cell_data",
             "csv_xlsx_editor.domain.filter_state",

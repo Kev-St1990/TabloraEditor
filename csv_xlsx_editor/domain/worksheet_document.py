@@ -1,6 +1,7 @@
 """Worksheet document model independent from UI and file IO."""
 
 from dataclasses import dataclass, field
+from copy import deepcopy
 from typing import Any, TypeAlias
 
 from csv_xlsx_editor.domain.cell_data import CellData
@@ -9,6 +10,17 @@ from csv_xlsx_editor.domain.sort_state import SortState
 from csv_xlsx_editor.domain.table_view import TableView
 
 CellAddress: TypeAlias = tuple[int, int]
+
+
+@dataclass(slots=True)
+class WorksheetSnapshot:
+    """Immutable-style copy of worksheet state used for undo and redo."""
+
+    cells: dict[CellAddress, CellData]
+    max_row: int
+    max_column: int
+    sort_state: SortState | None
+    filter_state: FilterState
 
 
 @dataclass(slots=True)
@@ -70,6 +82,25 @@ class WorksheetDocument:
             self.max_column,
             start_column + max((len(row_values) for row_values in matrix), default=0),
         )
+        self.rebuild_view()
+
+    def capture_state(self) -> WorksheetSnapshot:
+        """Create a snapshot of the complete worksheet state."""
+        return WorksheetSnapshot(
+            cells={address: deepcopy(cell) for address, cell in self.cells.items()},
+            max_row=self.max_row,
+            max_column=self.max_column,
+            sort_state=deepcopy(self.sort_state),
+            filter_state=deepcopy(self.filter_state),
+        )
+
+    def restore_state(self, snapshot: WorksheetSnapshot) -> None:
+        """Replace the worksheet state with a previously captured snapshot."""
+        self.cells = {address: deepcopy(cell) for address, cell in snapshot.cells.items()}
+        self.max_row = snapshot.max_row
+        self.max_column = snapshot.max_column
+        self.sort_state = deepcopy(snapshot.sort_state)
+        self.filter_state = deepcopy(snapshot.filter_state)
         self.rebuild_view()
 
     def get_display_rows(self) -> list[int]:

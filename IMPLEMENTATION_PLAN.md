@@ -19,7 +19,7 @@ Statuswerte:
 | 3. Datei-IO implementieren | Erledigt | CSV/XLSX/XLSM laden und speichern, Delimiter-Erkennung, Formeln/Formate/Makros erhalten | Roundtrip-Tests mit temporären Dateien bestanden | XLSM-Ladepfad nutzt `keep_vba=True`; Formeln mit `data_only=False`; Sortierung wird beim Speichern materialisiert |
 | 4. SheetView mit Indexspalte und Koordinatenmapping implementieren | Erledigt | `SheetView` rendert Worksheet-Views über testbaren Matrix-Builder und Mapper | Unit-Tests für Mapping, Indexspalte, Sortierung, Filterung und Spaltenlabels bestanden | UI bleibt Adapter über Domainmodell |
 | 5. Excel-kompatibles Copy/Paste ergänzen | Erledigt | Clipboard-Service mit TSV-Serialisierung und Range-Paste-Helfern | Unit-Tests für TSV Parse/Serialize und Range-Paste bestanden | Mac/Windows-Zeilenumbrüche beachten |
-| 6. Undo/Redo-Command-System hinzufügen | Offen | Reversible Commands für Edit, Paste, Sort, Filter | Unit-Tests für Execute/Undo/Redo | Keine UI-Logik in Commands |
+| 6. Undo/Redo-Command-System hinzufügen | Erledigt | Reversible Commands für Edit, Paste, Sort, Filter und Stack-Management implementiert | Unit-Tests für Execute/Undo/Redo, Redo-Invalidierung und Dirty-State bestanden | Keine UI-Logik in Commands |
 | 7. Header-Controller und Filter-Popup anbinden | Offen | Linksklick-Sortierung, Doppelklick-Autosize, Rechtsklick-Filter | Unit-Tests für Controller-Logik; UI-Smoke-Test optional | Filter entfernt beim Speichern keine Daten |
 | 8. Plattformintegration finalisieren | Offen | Menüs, Dateidialoge, Shortcuts für macOS/Windows | Unit-Tests für Shortcut-Auswahl; manueller Smoke-Test | `Command` auf macOS, `Control` auf Windows |
 

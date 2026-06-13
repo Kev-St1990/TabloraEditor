@@ -49,6 +49,13 @@ class PackageStructureTests(unittest.TestCase):
 
         self.assertEqual(CsvXlsxEditorApp.__name__, "CsvXlsxEditorApp")
 
+    def test_app_exposes_shortcut_handlers(self) -> None:
+        from csv_xlsx_editor import CsvXlsxEditorApp
+
+        for method_name in ["on_open", "on_save", "on_save_as", "on_undo", "on_redo", "on_copy", "on_paste"]:
+            with self.subTest(method=method_name):
+                self.assertTrue(hasattr(CsvXlsxEditorApp, method_name))
+
     def test_implementation_modules_are_importable(self) -> None:
         from csv_xlsx_editor.domain.filter_manager import FilterManager
         from csv_xlsx_editor.io.file_manager import FileManager

@@ -49,6 +49,10 @@ class CsvXlsxEditorApp(tk.Tk):
             self.dialogs.show_error_message("Open file failed", str(exc))
         return event
 
+    def on_open(self, event: object | None = None) -> object | None:
+        """Shortcut-compatible alias for file opening."""
+        return self.on_open_file(event)
+
     def on_save_file(self, event: object | None = None) -> object | None:
         """Save the current spreadsheet to its existing path."""
         if self.current_document is None:
@@ -58,6 +62,10 @@ class CsvXlsxEditorApp(tk.Tk):
         except Exception as exc:  # pragma: no cover - routed through messagebox in real UI
             self.dialogs.show_error_message("Save file failed", str(exc))
         return event
+
+    def on_save(self, event: object | None = None) -> object | None:
+        """Shortcut-compatible alias for save."""
+        return self.on_save_file(event)
 
     def on_save_as_file(self, event: object | None = None) -> object | None:
         """Save the current spreadsheet to a new location."""
@@ -71,6 +79,10 @@ class CsvXlsxEditorApp(tk.Tk):
         except Exception as exc:  # pragma: no cover - routed through messagebox in real UI
             self.dialogs.show_error_message("Save file failed", str(exc))
         return event
+
+    def on_save_as(self, event: object | None = None) -> object | None:
+        """Shortcut-compatible alias for save as."""
+        return self.on_save_as_file(event)
 
     def on_undo(self, event: object | None = None) -> object | None:
         """Undo the last command."""

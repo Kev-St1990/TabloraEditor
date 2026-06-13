@@ -19,6 +19,8 @@ class PackageStructureTests(unittest.TestCase):
             "csv_xlsx_editor.domain.workbook_document",
             "csv_xlsx_editor.domain.worksheet_document",
             "csv_xlsx_editor.io",
+            "csv_xlsx_editor.io.csv_adapter",
+            "csv_xlsx_editor.io.exceptions",
             "csv_xlsx_editor.platform",
             "csv_xlsx_editor.ui",
         ]

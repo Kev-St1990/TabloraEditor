@@ -1,24 +1,56 @@
-"""Current file loading placeholder for CSV and XLSX files."""
+"""File manager facade for CSV, XLSX, and XLSM documents."""
 
-import csv
 from pathlib import Path
-from typing import Any
 
-from openpyxl import load_workbook
+from csv_xlsx_editor.domain import FileType, WorkbookDocument
+from csv_xlsx_editor.io.csv_adapter import CsvAdapter
+from csv_xlsx_editor.io.exceptions import UnsupportedFileTypeError
+from csv_xlsx_editor.io.xlsx_adapter import XlsxAdapter
 
 
 class FileManager:
-    """Loads spreadsheet data through the existing minimal IO surface.
+    """Routes file operations to the appropriate format adapter."""
 
-    This placeholder keeps the original behavior available while later steps
-    introduce dedicated CSV, XLSX, and XLSM adapters.
-    """
+    def __init__(
+        self,
+        csv_adapter: CsvAdapter | None = None,
+        xlsx_adapter: XlsxAdapter | None = None,
+    ) -> None:
+        self.csv_adapter = csv_adapter or CsvAdapter()
+        self.xlsx_adapter = xlsx_adapter or XlsxAdapter()
 
-    def load_csv(self, path: str | Path, delimiter: str = ";") -> list[list[str]]:
-        """Load a CSV file with the given delimiter."""
-        with open(path, encoding="utf-8-sig", newline="") as file:
-            return list(csv.reader(file, delimiter=delimiter))
+    def open(self, path: str | Path, *, csv_delimiter: str | None = None) -> WorkbookDocument:
+        """Open a supported file as a workbook document."""
+        file_type = self.detect_file_type(path)
+        if file_type == "csv":
+            return self.csv_adapter.load(path, delimiter=csv_delimiter)
+        return self.xlsx_adapter.load(path)
 
-    def load_xlsx(self, path: str | Path) -> Any:
-        """Load an XLSX workbook with openpyxl."""
-        return load_workbook(path)
+    def save(
+        self,
+        document: WorkbookDocument,
+        path: str | Path | None = None,
+        *,
+        csv_delimiter: str | None = None,
+    ) -> None:
+        """Save a workbook document to its current or provided path."""
+        target_path = Path(path or document.path or "")
+        if not str(target_path):
+            raise UnsupportedFileTypeError("A target path is required for saving.")
+
+        file_type = self.detect_file_type(target_path)
+        if file_type == "csv":
+            self.csv_adapter.save(document, target_path, delimiter=csv_delimiter)
+            return
+        self.xlsx_adapter.save(document, target_path)
+
+    def detect_file_type(self, path: str | Path) -> FileType:
+        """Detect a supported file type from a path suffix."""
+        suffix = Path(path).suffix.lower()
+        if suffix == ".csv":
+            return "csv"
+        if suffix == ".xlsx":
+            return "xlsx"
+        if suffix == ".xlsm":
+            return "xlsm"
+        raise UnsupportedFileTypeError(f"Unsupported file type: {suffix or '<none>'}")

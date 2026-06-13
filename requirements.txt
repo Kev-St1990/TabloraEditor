@@ -1,0 +1,5 @@
+tksheet
+openpyxl
+pandas
+tkinterdnd2
+darkdetect

@@ -1,0 +1,2 @@
+APP_NAME = "CSV/XLSX Editor"
+VERSION = "2.0"

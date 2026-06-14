@@ -1,4 +1,4 @@
-# Architektur: CSV/XLSX Editor
+# Architektur: Tablora
 
 ## Zielbild
 
@@ -19,21 +19,21 @@ Wichtig: Für XLSX- und XLSM-Dateien bleibt die `openpyxl.Workbook`-Instanz die 
 Aktuell vorhandene Dateien und Pakete:
 
 - `main.py`: Einstiegspunkt, erzeugt `CsvXlsxEditorApp`
-- `csv_xlsx_editor/app.py`: minimales `tk.Tk`-Fenster mit `SheetManager`
-- `csv_xlsx_editor/ui/sheet_manager.py`: einfacher `Frame` mit einer `tksheet.Sheet`
-- `csv_xlsx_editor/io/file_manager.py`: rudimentäres CSV-/XLSX-Laden
-- `csv_xlsx_editor/domain/filter_manager.py`: Platzhalter für aktive Filter
-- `csv_xlsx_editor/config.py`: App-Name und Version
+- `tablora/app.py`: minimales `tk.Tk`-Fenster mit `SheetManager`
+- `tablora/ui/sheet_manager.py`: einfacher `Frame` mit einer `tksheet.Sheet`
+- `tablora/io/file_manager.py`: rudimentäres CSV-/XLSX-Laden
+- `tablora/domain/filter_manager.py`: Platzhalter für aktive Filter
+- `tablora/config.py`: App-Name und Version
 - `requirements.txt`: enthält bereits `tksheet`, `openpyxl`, `pandas`, `tkinterdnd2`, `darkdetect`
 
-Die alte Root-Modulstruktur wurde entfernt. Neue Implementierung erfolgt ausschließlich unter `csv_xlsx_editor/`.
+Die alte Root-Modulstruktur wurde entfernt. Neue Implementierung erfolgt ausschließlich unter `tablora/`.
 
 ## Vorgeschlagene Paketstruktur
 
 ```text
 CSVEditor/
   main.py
-  csv_xlsx_editor/
+  tablora/
     __init__.py
     app.py
     config.py
@@ -80,7 +80,7 @@ CSVEditor/
 
 #### `CsvXlsxEditorApp`
 
-Ort: `csv_xlsx_editor/app.py`
+Ort: `tablora/app.py`
 
 Verantwortung:
 
@@ -106,7 +106,7 @@ Wichtige Methoden:
 
 #### `MainWindow`
 
-Ort: `csv_xlsx_editor/ui/main_window.py`
+Ort: `tablora/ui/main_window.py`
 
 Verantwortung:
 
@@ -125,7 +125,7 @@ Wichtige Bestandteile:
 
 ### `WorkbookDocument`
 
-Ort: `csv_xlsx_editor/domain/workbook_document.py`
+Ort: `tablora/domain/workbook_document.py`
 
 Repräsentiert eine geöffnete CSV-, XLSX- oder XLSM-Datei.
 
@@ -152,7 +152,7 @@ Hinweis:
 
 ### `WorksheetDocument`
 
-Ort: `csv_xlsx_editor/domain/worksheet_document.py`
+Ort: `tablora/domain/worksheet_document.py`
 
 Repräsentiert ein einzelnes Worksheet inklusive View-Zustand.
 
@@ -177,7 +177,7 @@ Wichtige Methoden:
 
 ### `CellData`
 
-Ort: `csv_xlsx_editor/domain/cell_data.py`
+Ort: `tablora/domain/cell_data.py`
 
 Transportiert Zelleninformationen zwischen IO, Domain und UI.
 
@@ -196,7 +196,7 @@ Hinweis:
 
 ### `TableView`
 
-Ort: `csv_xlsx_editor/domain/table_view.py`
+Ort: `tablora/domain/table_view.py`
 
 Beschreibt die sichtbare Projektion eines Worksheets.
 
@@ -216,7 +216,7 @@ Verantwortung:
 
 ### `FileManager`
 
-Ort: `csv_xlsx_editor/io/file_manager.py`
+Ort: `tablora/io/file_manager.py`
 
 Fassade für alle Dateioperationen.
 
@@ -233,7 +233,7 @@ Delegiert an:
 
 ### `CsvAdapter`
 
-Ort: `csv_xlsx_editor/io/csv_adapter.py`
+Ort: `tablora/io/csv_adapter.py`
 
 Wichtige Methoden:
 
@@ -252,7 +252,7 @@ Hinweis:
 
 ### `XlsxAdapter`
 
-Ort: `csv_xlsx_editor/io/xlsx_adapter.py`
+Ort: `tablora/io/xlsx_adapter.py`
 
 Wichtige Methoden:
 
@@ -274,7 +274,7 @@ Wichtige Regeln:
 
 ### `SheetView`
 
-Ort: `csv_xlsx_editor/ui/sheet_view.py`
+Ort: `tablora/ui/sheet_view.py`
 
 Kapselt `tksheet.Sheet`.
 
@@ -305,7 +305,7 @@ Wichtige Methoden:
 
 ### `WorkbookTabs`
 
-Ort: `csv_xlsx_editor/ui/workbook_tabs.py`
+Ort: `tablora/ui/workbook_tabs.py`
 
 Verantwortung:
 
@@ -320,7 +320,7 @@ Wichtige Methoden:
 
 ### `HeaderController`
 
-Ort: `csv_xlsx_editor/ui/header_controller.py`
+Ort: `tablora/ui/header_controller.py`
 
 Verantwortung:
 
@@ -345,7 +345,7 @@ Sortierverhalten:
 
 ### `FilterPopup`
 
-Ort: `csv_xlsx_editor/ui/filter_popup.py`
+Ort: `tablora/ui/filter_popup.py`
 
 Excel-ähnliches Kontextmenü für Spaltenfilter.
 
@@ -368,7 +368,7 @@ Wichtige Methoden:
 
 ### `SortState`
 
-Ort: `csv_xlsx_editor/domain/sort_state.py`
+Ort: `tablora/domain/sort_state.py`
 
 Wichtige Attribute:
 
@@ -377,7 +377,7 @@ Wichtige Attribute:
 
 ### `FilterState`
 
-Ort: `csv_xlsx_editor/domain/filter_state.py`
+Ort: `tablora/domain/filter_state.py`
 
 Wichtige Attribute:
 
@@ -392,7 +392,7 @@ Wichtige Methoden:
 
 ### `ColumnFilter`
 
-Ort: `csv_xlsx_editor/domain/filter_state.py`
+Ort: `tablora/domain/filter_state.py`
 
 Wichtige Attribute:
 
@@ -404,7 +404,7 @@ Wichtige Attribute:
 
 ### `ClipboardService`
 
-Ort: `csv_xlsx_editor/platform/clipboard.py`
+Ort: `tablora/platform/clipboard.py`
 
 Verantwortung:
 
@@ -428,7 +428,7 @@ Integration:
 
 ### `UndoRedoManager`
 
-Ort: `csv_xlsx_editor/actions/undo_redo_manager.py`
+Ort: `tablora/actions/undo_redo_manager.py`
 
 Wichtige Attribute:
 
@@ -446,7 +446,7 @@ Wichtige Methoden:
 
 ### `Command`
 
-Ort: `csv_xlsx_editor/actions/command.py`
+Ort: `tablora/actions/command.py`
 
 Basisklasse für reversible Änderungen.
 
@@ -559,7 +559,7 @@ tksheet column width aktualisieren
 
 ### `ShortcutManager`
 
-Ort: `csv_xlsx_editor/platform/shortcuts.py`
+Ort: `tablora/platform/shortcuts.py`
 
 Verantwortung:
 
@@ -574,7 +574,7 @@ Wichtige Methoden:
 
 ### `DialogService`
 
-Ort: `csv_xlsx_editor/platform/dialogs.py`
+Ort: `tablora/platform/dialogs.py`
 
 Verantwortung:
 

@@ -13,9 +13,9 @@ REQUIREMENTS = [
 
 
 setup(
-    name="csv-xlsx-editor",
-    version="2.0",
-    description="Desktop editor for CSV, XLSX, and XLSM spreadsheets",
+    name="tablora",
+    version="2.0.0",
+    description="Tablora: Desktop editor for CSV, XLSX, and XLSM spreadsheets",
     long_description=README,
     long_description_content_type="text/markdown",
     packages=find_packages(exclude=("tests", "tests.*")),
@@ -23,7 +23,7 @@ setup(
     install_requires=REQUIREMENTS,
     entry_points={
         "gui_scripts": [
-            "csv-xlsx-editor=main:main",
+            "tablora=main:main",
         ],
     },
     python_requires=">=3.12",

@@ -3,10 +3,10 @@
 import unittest
 from dataclasses import dataclass, field
 
-from csv_xlsx_editor.actions import UndoRedoManager
-from csv_xlsx_editor.domain import FilterState, SortState, WorksheetDocument
-from csv_xlsx_editor.ui.filter_popup import FilterPopupState
-from csv_xlsx_editor.ui.header_controller import HeaderController
+from tablora.actions import UndoRedoManager
+from tablora.domain import FilterState, SortState, WorksheetDocument
+from tablora.ui.filter_popup import FilterPopupState
+from tablora.ui.header_controller import HeaderController
 
 
 @dataclass

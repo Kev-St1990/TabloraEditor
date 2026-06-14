@@ -2,7 +2,7 @@
 
 import unittest
 
-from csv_xlsx_editor.domain import FilterState, WorksheetDocument
+from tablora.domain import FilterState, WorksheetDocument
 
 
 class FilterStateTests(unittest.TestCase):

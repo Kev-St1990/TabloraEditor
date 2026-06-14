@@ -8,8 +8,8 @@ from unittest.mock import patch
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
 
-from csv_xlsx_editor.domain import SortState
-from csv_xlsx_editor.io import XlsxAdapter
+from tablora.domain import SortState
+from tablora.io import XlsxAdapter
 
 
 class XlsxAdapterTests(unittest.TestCase):
@@ -82,7 +82,7 @@ class XlsxAdapterTests(unittest.TestCase):
             )
 
     def test_xlsm_load_uses_keep_vba(self) -> None:
-        with patch("csv_xlsx_editor.io.xlsx_adapter.load_workbook") as mocked_load:
+        with patch("tablora.io.xlsx_adapter.load_workbook") as mocked_load:
             workbook = Workbook()
             mocked_load.return_value = workbook
 

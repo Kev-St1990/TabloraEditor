@@ -2,8 +2,8 @@
 
 import unittest
 
-from csv_xlsx_editor.domain import FilterState, SortState, WorksheetDocument
-from csv_xlsx_editor.ui.sheet_mapping import (
+from tablora.domain import FilterState, SortState, WorksheetDocument
+from tablora.ui.sheet_mapping import (
     INDEX_COLUMN_HEADER,
     SheetCoordinateMapper,
     SheetMatrixBuilder,

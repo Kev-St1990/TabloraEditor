@@ -5,8 +5,8 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from csv_xlsx_editor.domain import FilterState, SortState
-from csv_xlsx_editor.io import CsvAdapter
+from tablora.domain import FilterState, SortState
+from tablora.io import CsvAdapter
 
 
 class CsvAdapterTests(unittest.TestCase):

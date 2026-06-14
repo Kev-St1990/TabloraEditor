@@ -14,7 +14,7 @@ Statuswerte:
 
 | Schritt | Status | Ergebnis | Tests | Notizen |
 | --- | --- | --- | --- | --- |
-| 1. Paketstruktur anlegen und vorhandene Platzhalter überführen | Erledigt | Zielpaket `csv_xlsx_editor/` mit Subpackages angelegt; alte Root-Wrapper entfernt | Import-/Smoke-Tests bestanden | `main.py` nutzt ausschließlich das neue Paket |
+| 1. Paketstruktur anlegen und vorhandene Platzhalter überführen | Erledigt | Zielpaket `tablora/` mit Subpackages angelegt; alte Root-Wrapper entfernt | Import-/Smoke-Tests bestanden | `main.py` nutzt ausschließlich das neue Paket |
 | 2. Domainmodell implementieren | Erledigt | `WorkbookDocument`, `WorksheetDocument`, `CellData`, `TableView`, `SortState`, `FilterState` implementiert | Unit-Tests für Koordinaten, Filter, Sortierzustand, Workbook und CellData bestanden | Ohne tkinter/tksheet-Abhängigkeit testbar |
 | 3. Datei-IO implementieren | Erledigt | CSV/XLSX/XLSM laden und speichern, Delimiter-Erkennung, Formeln/Formate/Makros erhalten | Roundtrip-Tests mit temporären Dateien bestanden | XLSM-Ladepfad nutzt `keep_vba=True`; Formeln mit `data_only=False`; Sortierung wird beim Speichern materialisiert |
 | 4. SheetView mit Indexspalte und Koordinatenmapping implementieren | Erledigt | `SheetView` rendert Worksheet-Views über testbaren Matrix-Builder und Mapper | Unit-Tests für Mapping, Indexspalte, Sortierung, Filterung und Spaltenlabels bestanden | UI bleibt Adapter über Domainmodell |
@@ -211,7 +211,7 @@ Die Folgefehler zeigen vor allem drei wiederkehrende Risiken:
 
 Ziel:
 
-- `csv_xlsx_editor/` mit Subpackages `domain`, `io`, `ui`, `actions`, `platform`
+- `tablora/` mit Subpackages `domain`, `io`, `ui`, `actions`, `platform`
 - Bestehende Platzhalter in die neue Struktur verschieben oder als Kompatibilitätsschicht erhalten
 - `main.py` bleibt Einstiegspunkt
 

@@ -4,7 +4,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from csv_xlsx_editor.io import FileManager, UnsupportedFileTypeError
+from tablora.io import FileManager, UnsupportedFileTypeError
 
 
 class FileManagerTests(unittest.TestCase):

@@ -3,8 +3,8 @@
 from datetime import date, datetime
 import unittest
 
-from csv_xlsx_editor.domain import CellData, WorkbookDocument, WorksheetDocument
-from csv_xlsx_editor.domain.sort_state import SortState
+from tablora.domain import CellData, WorkbookDocument, WorksheetDocument
+from tablora.domain.sort_state import SortState
 
 
 class WorkbookDocumentTests(unittest.TestCase):

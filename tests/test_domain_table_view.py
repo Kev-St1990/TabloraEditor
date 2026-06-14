@@ -2,7 +2,7 @@
 
 import unittest
 
-from csv_xlsx_editor.domain import TableView, WorksheetDocument
+from tablora.domain import TableView, WorksheetDocument
 
 
 class TableViewTests(unittest.TestCase):

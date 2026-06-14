@@ -2,7 +2,7 @@
 
 import unittest
 
-from csv_xlsx_editor.actions import (
+from tablora.actions import (
     EditCellCommand,
     FilterCommand,
     PasteRangeCommand,
@@ -10,7 +10,7 @@ from csv_xlsx_editor.actions import (
     SortValuesCommand,
     UndoRedoManager,
 )
-from csv_xlsx_editor.domain import FilterState, SortState, WorkbookDocument, WorksheetDocument
+from tablora.domain import FilterState, SortState, WorkbookDocument, WorksheetDocument
 
 
 class UndoRedoCommandTests(unittest.TestCase):

@@ -2,7 +2,7 @@
 
 Tablora is a lightweight desktop editor for CSV and Excel files, built with `tkinter`, `tksheet`, and `openpyxl`.
 
-It is designed for everyday spreadsheet work: opening data, reviewing it, sorting, filtering, editing, and saving it again without constantly thinking about file-format details.
+The app is designed for everyday spreadsheet work: opening data, reviewing it, sorting, filtering, editing, and saving it again without constantly thinking about file-format details.
 
 ## Maintainer
 
@@ -13,7 +13,7 @@ It is designed for everyday spreadsheet work: opening data, reviewing it, sortin
 
 - Open and save CSV, XLSX, and XLSM files
 - Preserve formulas when loading and saving
-- Preserve formatting when saving, without rendering it in the UI for v1
+- Preserve formatting when saving without visual rendering in version 1
 - Work with multiple worksheets
 - Separate index column for row IDs
 - Excel-compatible copy/paste
@@ -65,16 +65,11 @@ Recommended standalone build path:
 - Windows: `pyinstaller tablora.spec`
 - macOS: `pyinstaller tablora.spec`
 
-The resulting artifacts are placed in `dist/`. Before building, install dependencies with:
-
-```bash
-pip install -r requirements.txt
-pip install -r requirements-build.txt
-```
+The resulting artifacts are placed in `dist/`. Before building, install dependencies with `pip install -r requirements.txt`.
 
 The earlier `py2app` path is not recommended for the current Tk/macOS setup.
 
-A short step-by-step build guide is available in [BUILD.md](BUILD.md).
+See [BUILD.md](../BUILD.md) for a short step-by-step guide.
 
 ## Project Status
 
@@ -88,11 +83,8 @@ The codebase is organized into:
 
 The architecture is designed so that the core logic stays testable without a GUI.
 
-The technical architecture and implementation tracker live in [DevelopmentDocs/ARCHITECTURE.md](DevelopmentDocs/ARCHITECTURE.md) and [DevelopmentDocs/IMPLEMENTATION_PLAN.md](DevelopmentDocs/IMPLEMENTATION_PLAN.md).
-
 ## License
 
 This project is open source and freely available.
 
-The full license text is in [LICENSE.md](LICENSE.md).
-
+The full license text is in [LICENSE.md](../LICENSE.md).

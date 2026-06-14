@@ -2,7 +2,7 @@
 
 import unittest
 
-from csv_xlsx_editor.domain import SortState, WorksheetDocument, first_sort_for_column
+from tablora.domain import SortState, WorksheetDocument, first_sort_for_column
 
 
 class SortStateTests(unittest.TestCase):

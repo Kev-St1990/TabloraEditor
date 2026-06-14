@@ -2,25 +2,24 @@ from pathlib import Path
 
 from setuptools import find_packages, setup
 
-from csv_xlsx_editor.config import APP_NAME, VERSION
-
-
 ROOT = Path(__file__).resolve().parent
 README = (ROOT / "README.md").read_text(encoding="utf-8")
-APP_BUNDLE_NAME = "CSVXLSX Editor"
+APP_BUNDLE_NAME = "Tablora Editor"
+APP_DISPLAY_NAME = "Tablora Editor"
+APP_VERSION = "2.0.0"
 
 APP = ["main.py"]
 OPTIONS = {
     "argv_emulation": True,
     "plist": {
         "CFBundleName": APP_BUNDLE_NAME,
-        "CFBundleDisplayName": APP_NAME,
-        "CFBundleShortVersionString": VERSION,
-        "CFBundleVersion": VERSION,
-        "CFBundleIdentifier": "com.csvxlsxeditor.app",
+        "CFBundleDisplayName": APP_DISPLAY_NAME,
+        "CFBundleShortVersionString": APP_VERSION,
+        "CFBundleVersion": APP_VERSION,
+        "CFBundleIdentifier": "com.tablora.editor",
     },
     "packages": [
-        "csv_xlsx_editor",
+        "tablora",
         "tksheet",
         "openpyxl",
         "pandas",
@@ -31,9 +30,9 @@ OPTIONS = {
 
 
 setup(
-    name="csv-xlsx-editor-macos",
-    version=VERSION,
-    description="macOS app bundle build for the CSV/XLSX editor",
+    name="tablora-macos",
+    version=APP_VERSION,
+    description="macOS app bundle build for Tablora",
     long_description=README,
     long_description_content_type="text/markdown",
     packages=find_packages(exclude=("tests", "tests.*")),

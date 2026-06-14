@@ -1,10 +1,5 @@
-from csv_xlsx_editor import CsvXlsxEditorApp
-
-
-def main() -> None:
-    app = CsvXlsxEditorApp()
-    app.mainloop()
-
+from tablora import CsvXlsxEditorApp
 
 if __name__ == "__main__":
-    main()
+    app = CsvXlsxEditorApp()
+    app.mainloop()

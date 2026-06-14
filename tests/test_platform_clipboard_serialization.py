@@ -2,8 +2,8 @@
 
 import unittest
 
-from csv_xlsx_editor.domain import WorksheetDocument
-from csv_xlsx_editor.platform import ClipboardService, InMemoryClipboardBackend
+from tablora.domain import WorksheetDocument
+from tablora.platform import ClipboardService, InMemoryClipboardBackend
 
 
 class ClipboardServiceTests(unittest.TestCase):

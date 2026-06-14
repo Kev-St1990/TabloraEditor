@@ -4,10 +4,10 @@ import unittest
 from dataclasses import dataclass, field
 from unittest.mock import patch
 
-from csv_xlsx_editor.platform.dialogs import DialogService
-from csv_xlsx_editor.platform.shortcuts import ShortcutManager
-from csv_xlsx_editor.ui.menu_bar import MenuBar
-from csv_xlsx_editor.ui.sheet_view import SheetView
+from tablora.platform.dialogs import DialogService
+from tablora.platform.shortcuts import ShortcutManager
+from tablora.ui.menu_bar import MenuBar
+from tablora.ui.sheet_view import SheetView
 
 
 @dataclass

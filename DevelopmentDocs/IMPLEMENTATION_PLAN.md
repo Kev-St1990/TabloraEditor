@@ -22,6 +22,7 @@ Statuswerte:
 | 6. Undo/Redo-Command-System hinzufügen | Erledigt | Reversible Commands für Edit, Paste, Sort, Filter und Stack-Management implementiert | Unit-Tests für Execute/Undo/Redo, Redo-Invalidierung und Dirty-State bestanden | Keine UI-Logik in Commands |
 | 7. Header-Controller und Filter-Popup anbinden | Erledigt | Linksklick-Sortierung, Doppelklick-Autosize, Rechtsklick-Filter und Popup-State-Handling implementiert | Unit-Tests für Controller-Logik und Popup-State bestanden | Filter entfernt beim Speichern keine Daten |
 | 8. Plattformintegration finalisieren | Erledigt | Menüs, Dateidialoge, Shortcuts für macOS/Windows und App-Komposition finalisiert | Unit-Tests für Shortcut-Auswahl, Dialog-Filters und Menü-Anbindung bestanden | `Command` auf macOS, `Control` auf Windows |
+| 9. Zellformatierung für Dezimalzahlen und Datumswerte ergänzen | Erledigt | Selektion oder ganze Spalte kann zwischen DEU-/US-Zahlenformaten und gängigen Datumsformaten umgestellt werden; Vorschau, Warnungen und Undo/Redo sind angebunden | Domain-, Action-, UI-Import- und Roundtrip-Tests für Erkennung, Ambiguität, Persistenz und Rückgängig/Wiederholen bestanden | XLSX ändert nach Möglichkeit `number_format`, CSV schreibt Textwerte kontrolliert um; `Auto` überspringt mehrdeutige Datumswerte |
 
 ## Umsetzungsgates
 
@@ -341,3 +342,316 @@ Ein Feature ist fertig, wenn:
 - Die Modulgrenzen aus `ARCHITECTURE.md` eingehalten werden.
 - Der Tracker aktualisiert wurde.
 - `python -m unittest discover -s tests` erfolgreich läuft.
+
+## Erweiterungsplan: Zellformatierung für Zahlen und Datum
+
+### Zielbild
+
+Der Editor soll für markierte Zellen oder eine ausgewählte Spalte Formatwechsel für Dezimalzahlen und Datumswerte anbieten, ohne das bestehende Modell aus Domain, Commands, UI und IO aufzubrechen.
+
+Aus Nutzersicht soll die Funktion drei Dinge leisten:
+
+- Bestehende Werte in gängige Zielschreibweisen überführen, zum Beispiel `1.234,56` nach `1,234.56` oder `23 Jan 2024` nach `23.01.2024`
+- Vor dem Anwenden eine kleine Vorschau und erkennbare Warnungen für unklare Werte anzeigen
+- Rückgängig machbar sein, genau wie Sortierung, Filter und normale Zellbearbeitung
+
+### Scope der ersten Version
+
+Unterstützte Zahlenformate:
+
+- `DEU decimal`: `1.234,56`, `12,5`, `-0,75`
+- `US decimal`: `1,234.56`, `12.5`, `-0.75`
+
+Unterstützte Datumsfamilien:
+
+- `DEU numerisch`: `14.06.2026`, optional mit Uhrzeit
+- `US numerisch`: `06/14/2026`, optional mit Uhrzeit
+- `ISO`: `2026-06-14`, optional mit Uhrzeit
+- `DD MMM YYYY (EN)`: `23 Jan 2024`, `02 Feb 2024`, `03 Apr 2024`, `04 Jun 2024`
+- `DD MMM YYYY (DE)`: `01 Mär 2024`, `25 Mär 2024`, `02 Mai 2024`, `31 Dez 2024`
+- Optional gleiche Familien mit Zeitanteil, sofern der Ursprungswert bereits eine Uhrzeit trägt
+
+Nicht Teil von v1:
+
+- Frei definierbare Custom-Patterns
+- Komplexe Locale-Systeme jenseits von DEU und US
+- Vollständige UI-Formatvorschau pro einzelner Zelle im Raster
+- Automatische Hintergrund-Konvertierung beim Öffnen einer Datei
+
+### UX-Konzept für die Umsetzung
+
+Eintrittspunkte:
+
+- Header-Kontextmenü: `Format Column...`
+- Hauptmenü: `Edit -> Format Selected Cells...`
+
+Dialogfelder:
+
+- `Typ`: `Decimal numbers` oder `Dates`
+- `Quelle erkennen als`:
+  - Bei Zahlen: `Auto`, `DEU decimal`, `US decimal`
+  - Bei Datum: `Auto`, `DEU numeric`, `US numeric`, `ISO`, `Month name EN`, `Month name DE`
+- `Zielformat`:
+  - Bei Zahlen: `DEU decimal`, `US decimal`
+  - Bei Datum: `DEU`, `US`, `ISO`, `DD MMM YYYY (EN)`, `DD MMM YYYY (DE)`
+- `Bereich`: reine Info, etwa `column C` oder `18 selected cells`
+- `Vorschau`: einige Beispielumwandlungen aus der aktuellen Auswahl
+- `Warnungen`: Anzahl mehrdeutiger, unpassender oder leerer Zellen
+
+UX-Regeln:
+
+- Ohne explizites Anwenden findet keine Umformatierung statt.
+- Bei `Auto` werden nur eindeutig erkennbare Werte verarbeitet.
+- Mehrdeutige Werte wie `01/02/2024` werden standardmäßig übersprungen und im Dialog benannt.
+- Nach erfolgreicher Aktion erscheint eine kurze Rückmeldung, z. B. `18 Zellen formatiert, 2 übersprungen`.
+- Die gesamte Aktion ist ein einzelner Undo/Redo-Schritt.
+
+### Fachregel: Darstellung ändern, Daten nicht still beschädigen
+
+Es wird fachlich zwischen Dateitypen und Zellinhalten unterschieden:
+
+- `XLSX/XLSM` mit echten numerischen oder Datumswerten:
+  - Wenn der Zellwert als `int`, `float`, `date` oder `datetime` vorliegt, bleibt der Wert selbst unverändert.
+  - Es wird vorzugsweise nur `number_format` angepasst.
+- `CSV` oder textuelle Werte in beliebigen Formaten:
+  - Der Zelltext wird kontrolliert umgeschrieben, weil keine nativen Formatmetadaten existieren.
+- Textuelle Zellen in `XLSX/XLSM`:
+  - Wenn der Inhalt nur als String vorliegt, darf für v1 ebenfalls eine Textumwandlung stattfinden.
+  - Diese Umwandlung muss für den Nutzer im Dialog klar als echte Inhaltsänderung erkennbar bleiben.
+
+Grundsatz:
+
+- Die Funktion soll nie still zwischen inhaltlicher Wertumwandlung und bloßer Anzeigeformatierung springen.
+- Der Rückgabestatus der Aktion muss zählen, wie viele Zellen als Metadaten-Änderung und wie viele als Textänderung behandelt wurden.
+
+### Ambiguitätsregeln
+
+Die Erkennung braucht bewusst konservative Regeln:
+
+- `01/02/2024` ist unter `Auto` mehrdeutig und wird nicht konvertiert.
+- `13/02/2024` ist eindeutig als DMY interpretierbar und darf auch unter `Auto` erkannt werden.
+- Monatsnamen wie `Jan`, `Feb`, `Apr`, `Jun`, `Mär`, `Mai`, `Dez` sind eindeutig und dürfen unter `Auto` erkannt werden.
+- Ungültige Werte wie `31/02/2024`, `foo`, leere Strings oder Mischtexte werden übersprungen.
+- Wenn eine Spalte gemischte Schreibweisen enthält, soll die Vorschau die erkannten Familien sichtbar machen, statt nur eine stille Erfolgsquote anzuzeigen.
+
+### Architekturelle Einordnung
+
+#### Domain
+
+Neue fachliche Logik gehört in die Domain oder in einen kleinen domainnahen Formatierungsservice:
+
+- Erkennung von Zahlenformatfamilien
+- Erkennung von Datumsformatfamilien
+- Vorschau-Einträge und Ergebniszählung
+- Reine Formatierungsoperationen auf Zell- oder Bereichsebene
+
+Empfohlene neue Typen:
+
+- `ValueFormatKind` oder ähnlicher Literal-/Enum-Typ für `decimal` und `date`
+- `FormatSourceHint` für erklärte Quellfamilien
+- `FormatTarget` für Zielschreibweisen
+- `FormatPreviewItem` für Alt-/Neu-Vorschau plus Status
+- `FormatCellsResult` für geändert, übersprungen, mehrdeutig, Fehler
+
+Ergänzung im `WorksheetDocument`:
+
+- Bereichsbezogene Methode für Formatierung einer Zellmenge oder einer ganzen Spalte
+- Rückgabe eines strukturierten Ergebnisses für Dialog und Undo/Redo
+
+#### Actions
+
+Neue Command-Schicht:
+
+- `FormatCellsCommand` für Selektion
+- Optional derselbe Command auch für Spaltenformatierung, wenn der Zielbereich als Zellliste übergeben wird
+
+Anforderungen:
+
+- Snapshot-basiert rückgängig
+- Markiert das Workbook als dirty
+- Triggert wie andere Commands einen kontrollierten Refresh
+
+#### UI
+
+Neue UI-Bausteine:
+
+- Kleiner modaler `FormatDialog`
+- Menüeinträge in `MenuBar`
+- Neuer Header-Kontextmenü-Eintrag über `SheetView` bzw. `HeaderController`-Verdrahtung
+
+Aufgaben der UI:
+
+- Zielbereich bestimmen: Selektion oder ganze Spalte
+- Domainnahe Vorschau aufrufen
+- Warnungen und Ergebnistext anzeigen
+- Nach Anwenden Command ausführen
+
+#### IO
+
+Die bestehende IO-Architektur bleibt weitgehend unverändert, muss aber die Fachregel respektieren:
+
+- `XlsxAdapter` muss geänderte `number_format`-Metadaten sauber zurückschreiben
+- Textumgeschriebene Zellen werden wie normale Wertänderungen behandelt
+- CSV speichert weiterhin nur die finalen sichtbaren Zellwerte
+
+### Schrittablauf für die Implementierung
+
+#### 9.1 Fachliche Testmatrix definieren
+
+Ziel:
+
+- Vor dem Coden eine feste Matrix repräsentativer Zahlen- und Datumswerte verankern
+- Darin sowohl eindeutige als auch mehrdeutige und ungültige Fälle abdecken
+
+Abdeckung für Datum:
+
+- `23 Jan 2024`
+- `24 Jan 2024`
+- `02 Feb 2024`
+- `09 Feb 2024`
+- `13 Feb 2024`
+- `20 Feb 2024`
+- `29 Feb 2024`
+- `01 Mär 2024`
+- `04 Mär 2024`
+- `09 Mär 2024`
+- `25 Mär 2024`
+- `27 Mär 2024`
+- `03 Apr 2024`
+- `30 Apr 2024`
+- `02 Mai 2024`
+- `04 Jun 2024`
+- `07 Jun 2024`
+- `14.06.2026`
+- `06/14/2026`
+- `2026-06-14`
+- `01/02/2024` als Ambiguitätsfall
+
+Abdeckung für Zahlen:
+
+- `1.234,56`
+- `1,234.56`
+- `12,5`
+- `12.5`
+- `-0,75`
+- `-0.75`
+- Leere und ungültige Werte
+
+Akzeptanzkriterien:
+
+- Die Matrix liegt als Testdaten oder klarer Testblock in `tests/` vor.
+- Ambiguitäts- und Skip-Regeln sind darin explizit sichtbar.
+
+#### 9.2 Domain-Service für Erkennung und Vorschau
+
+Ziel:
+
+- Reinen Python-Service für Parsing, Ziel-Rendering und Vorschau aufbauen
+
+Akzeptanzkriterien:
+
+- Zahlen und Datum können ohne GUI in Quellfamilien erkannt werden.
+- Zielstrings können für alle unterstützten Familien stabil erzeugt werden.
+- Mehrdeutige Werte werden als eigener Status zurückgegeben, nicht per Exception.
+
+#### 9.3 Worksheet-Integration für Bereichsformatierung
+
+Ziel:
+
+- Der aktive Bereich oder eine Spalte kann auf Domain-Ebene formatiert werden
+
+Akzeptanzkriterien:
+
+- Ganze Spalten und freie Zellmengen werden unterstützt.
+- Ergebnis liefert Zähler für `geändert`, `übersprungen`, `mehrdeutig`.
+- `rebuild_view()` wird kontrolliert ausgeführt, wenn Zellinhalte tatsächlich verändert wurden.
+
+#### 9.4 Command für Undo/Redo
+
+Ziel:
+
+- Formatierungsaktion in das bestehende Undo/Redo-System integrieren
+
+Akzeptanzkriterien:
+
+- Ein Anwenden des Dialogs erzeugt genau einen Undo-Schritt.
+- Undo und Redo stellen sowohl Zellwerte als auch `number_format` wieder her.
+
+#### 9.5 Dialog und Menüverdrahtung
+
+Ziel:
+
+- Dialog mit Vorschau, Warnungen und Bereichsinformation in die App einhängen
+
+Akzeptanzkriterien:
+
+- `Edit -> Format Selected Cells...` funktioniert für aktuelle Selektion.
+- `Format Column...` funktioniert aus dem Header-Kontextmenü für die gezielte Spalte.
+- Ohne aktive Datei oder ohne gültigen Bereich passiert keine fehlerhafte Aktion.
+
+#### 9.6 Persistenz- und Roundtrip-Absicherung
+
+Ziel:
+
+- Sicherstellen, dass die Fachunterscheidung zwischen Metadaten-Änderung und Textänderung beim Speichern konsistent bleibt
+
+Akzeptanzkriterien:
+
+- XLSX-Roundtrip behält echte Zahlen-/Datumswerte und schreibt geänderte `number_format`-Muster zurück.
+- CSV-Roundtrip speichert umgeschriebene Texte erwartungsgemäß.
+- Bereits vorhandene Styles werden durch reine Formataktionen nicht unnötig zerstört.
+
+### Teststrategie für Schritt 9
+
+Neue oder angepasste Tests:
+
+- `tests/test_domain_cell_formatting.py`
+  - Zahlen-Erkennung DEU/US
+  - Datums-Erkennung für numerische, ISO- und Monatsnamen-Formate
+  - Mehrdeutige Fälle
+  - Zielrendering
+- `tests/test_domain_workbook_document.py`
+  - Bereichs- oder Spaltenformatierung auf Worksheet-Ebene
+  - Gemischte Spalten mit geändert/übersprungen/mehrdeutig
+- `tests/test_actions_undo_redo.py`
+  - Formatierungs-Command ist reversibel
+- `tests/test_ui_header_controller.py` oder neuer UI-Test
+  - Spaltenaktion ist korrekt verdrahtet
+- `tests/test_io_xlsx_adapter.py`
+  - `number_format`-Änderung bleibt beim Speichern erhalten
+- `tests/test_io_csv_adapter.py`
+  - Textumgeschriebene Zielwerte landen korrekt in CSV
+
+Manuelle Prüfpunkte:
+
+- Selektion mit gemischten Datumsformaten zeigt sinnvolle Vorschau
+- Spalte mit `23 Jan 2024`, `01 Mär 2024`, `02 Mai 2024`, `04 Jun 2024` lässt sich in `DEU` und `US` umwandeln
+- Ambige Spalte mit `01/02/2024` zeigt Warnung und überspringt den Wert unter `Auto`
+- XLSX-Datei mit echten Excel-Datums-/Zahlenzellen behält nach `Save` den numerischen Kernwert
+
+### Besondere Risiken und Schutzregeln
+
+Risiken:
+
+- Verwechslung zwischen echter Wertumwandlung und bloßer Formatmetadaten-Änderung
+- Zu aggressive Auto-Erkennung bei mehrdeutigen Datumswerten
+- Verlust von `number_format` oder Styles bei XLSX-Zellen
+- Undo/Redo stellt nur Werte, aber nicht Formatmetadaten wieder her
+
+Schutzregeln:
+
+- Auto-Erkennung immer konservativ halten
+- Formatlogik zuerst komplett per Domain-Tests absichern, dann UI anbinden
+- `number_format` nie ohne Test für XLSX-Roundtrip anfassen
+- Vorschau und Ergebniszählung als Pflichtbestandteil des Flows behandeln, nicht als spätere Kosmetik
+
+### Akzeptanz für Schritt 9 insgesamt
+
+Der Schritt gilt als abgeschlossen, wenn:
+
+- Selektion und Spaltenformatierung für Zahlen und Datum verfügbar sind
+- Die unterstützten Datumsformate die gängigen numerischen, ISO- sowie EN-/DE-Monatskürzel abdecken
+- Mehrdeutige Datumswerte unter `Auto` nicht stillschweigend falsch konvertiert werden
+- Undo/Redo die gesamte Aktion sauber rückgängig macht
+- XLSX und CSV die jeweiligen Persistenzregeln einhalten
+- Tests für Erkennung, Vorschau, Command und Roundtrip grün sind

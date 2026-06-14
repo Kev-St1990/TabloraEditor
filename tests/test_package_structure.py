@@ -14,11 +14,13 @@ class PackageStructureTests(unittest.TestCase):
             "tablora.actions.command",
             "tablora.actions.edit_cell_command",
             "tablora.actions.filter_command",
+            "tablora.actions.format_cells_command",
             "tablora.actions.paste_range_command",
             "tablora.actions.sort_command",
             "tablora.actions.undo_redo_manager",
             "tablora.domain",
             "tablora.domain.cell_data",
+            "tablora.domain.cell_formatting",
             "tablora.domain.filter_state",
             "tablora.domain.sort_state",
             "tablora.domain.table_view",
@@ -33,6 +35,7 @@ class PackageStructureTests(unittest.TestCase):
             "tablora.platform.shortcuts",
             "tablora.ui",
             "tablora.ui.filter_popup",
+            "tablora.ui.format_dialog",
             "tablora.ui.header_controller",
             "tablora.ui.menu_bar",
             "tablora.ui.sheet_mapping",
@@ -52,7 +55,16 @@ class PackageStructureTests(unittest.TestCase):
     def test_app_exposes_shortcut_handlers(self) -> None:
         from tablora import CsvXlsxEditorApp
 
-        for method_name in ["on_open", "on_save", "on_save_as", "on_undo", "on_redo", "on_copy", "on_paste"]:
+        for method_name in [
+            "on_open",
+            "on_save",
+            "on_save_as",
+            "on_undo",
+            "on_redo",
+            "on_copy",
+            "on_paste",
+            "on_format_selected_cells",
+        ]:
             with self.subTest(method=method_name):
                 self.assertTrue(hasattr(CsvXlsxEditorApp, method_name))
 

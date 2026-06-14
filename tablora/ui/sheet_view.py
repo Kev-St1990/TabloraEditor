@@ -211,6 +211,34 @@ class SheetView(Frame):
 
         return min(source_cells)
 
+    def get_selected_source_cells(self) -> list[tuple[int, int]]:
+        """Return all currently selected source cells.
+
+        The synthetic index column is ignored. If only one active cell exists,
+        that cell is returned as a single-element list.
+        """
+        if self.worksheet is None or self.mapper is None:
+            return []
+
+        selected_cells = self._selected_ui_cells()
+        if not selected_cells:
+            current_cell = self._current_ui_cell()
+            if current_cell is None:
+                return []
+            selected_cells = [current_cell]
+
+        source_cells: list[tuple[int, int]] = []
+        for ui_row, ui_column in selected_cells:
+            if ui_column <= 0:
+                continue
+            try:
+                source_cell = self.to_source_cell(ui_row, ui_column)
+            except ValueError:
+                continue
+            if source_cell not in source_cells:
+                source_cells.append(source_cell)
+        return source_cells
+
     def _selected_ui_cells(self) -> list[tuple[int, int]]:
         """Collect selected UI cells from the underlying tksheet widget."""
         candidates = (

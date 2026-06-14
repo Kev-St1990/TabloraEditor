@@ -3,11 +3,12 @@
 import tkinter as tk
 
 from tablora.config import APP_NAME
-from tablora.actions import UndoRedoManager
-from tablora.domain import FilterState, SortState, WorkbookDocument
+from tablora.actions import FormatCellsCommand, UndoRedoManager
+from tablora.domain import FilterState, FormatCellsResult, FormatRequest, SortState, WorkbookDocument
 from tablora.io import FileManager
 from tablora.platform import ClipboardService, DialogService, ShortcutManager, TkClipboardBackend
 from tablora.ui.filter_dialog import FilterDialog
+from tablora.ui.format_dialog import FormatDialog
 from tablora.ui.header_controller import HeaderController
 from tablora.ui.menu_bar import MenuBar
 from tablora.ui.sheet_manager import SheetManager
@@ -91,12 +92,14 @@ class CsvXlsxEditorApp(tk.Tk):
 
     def on_undo(self, event: object | None = None) -> object | None:
         """Undo the last command."""
-        self.undo_redo_manager.undo()
+        if self.undo_redo_manager.undo():
+            self.sheet_manager.sheet_view.refresh()
         return event
 
     def on_redo(self, event: object | None = None) -> object | None:
         """Redo the last undone command."""
-        self.undo_redo_manager.redo()
+        if self.undo_redo_manager.redo():
+            self.sheet_manager.sheet_view.refresh()
         return event
 
     def on_copy(self, event: object | None = None) -> object | None:
@@ -142,6 +145,39 @@ class CsvXlsxEditorApp(tk.Tk):
         if controller is None:
             return event
         controller.apply_filter_state(FilterState())
+        return event
+
+    def on_format_selected_cells(self, event: object | None = None) -> object | None:
+        """Open the format dialog for the current selection."""
+        if self.current_document is None:
+            return event
+
+        addresses = self.sheet_manager.sheet_view.get_selected_source_cells()
+        if not addresses:
+            return event
+
+        self._open_format_dialog(
+            scope_label=f"{len(addresses)} selected cell(s)",
+            addresses=addresses,
+        )
+        return event
+
+    def on_format_selected_column(self, event: object | None = None) -> object | None:
+        """Open the format dialog for the targeted data column."""
+        if self.current_document is None:
+            return event
+
+        ui_column = self.sheet_manager.sheet_view.get_header_context_ui_column()
+        if ui_column is None or ui_column <= 0:
+            return event
+
+        worksheet = self.current_document.get_active_sheet()
+        source_column = ui_column - 1
+        addresses = [(row, source_column) for row in range(worksheet.max_row)]
+        self._open_format_dialog(
+            scope_label=f"column {self._column_label(source_column)}",
+            addresses=addresses,
+        )
         return event
 
     def on_sort_selected_column_ascending(self, event: object | None = None) -> object | None:
@@ -194,6 +230,10 @@ class CsvXlsxEditorApp(tk.Tk):
         self.sheet_manager.sheet_view.add_header_context_action(
             "Filter Selected Column...",
             self.on_filter_selected_column,
+        )
+        self.sheet_manager.sheet_view.add_header_context_action(
+            "Format Column...",
+            self.on_format_selected_column,
         )
         self.sheet_manager.sheet_view.add_header_context_action("Clear Filters", self.on_clear_filters)
 
@@ -259,3 +299,46 @@ class CsvXlsxEditorApp(tk.Tk):
         sheet_widget = self.sheet_manager.sheet_view.sheet
         sheet_par = getattr(sheet_widget, "PAR", None)
         return getattr(sheet_par, "ops", None)
+
+    def _open_format_dialog(self, *, scope_label: str, addresses: list[tuple[int, int]]) -> None:
+        worksheet = self.current_document.get_active_sheet() if self.current_document is not None else None
+        if worksheet is None:
+            return
+
+        dialog = FormatDialog(
+            self,
+            scope_label=scope_label,
+            preview_callback=lambda request: worksheet.preview_format_cells(addresses, request),
+            apply_callback=lambda request: self._apply_format_request(addresses, request),
+        )
+        dialog.wait_window()
+
+    def _apply_format_request(
+        self,
+        addresses: list[tuple[int, int]],
+        request: FormatRequest,
+    ) -> FormatCellsResult:
+        worksheet = self.current_document.get_active_sheet() if self.current_document is not None else None
+        if worksheet is None:
+            return FormatCellsResult()
+
+        command = FormatCellsCommand(
+            worksheet=worksheet,
+            addresses=addresses,
+            request=request,
+            workbook=self.current_document,
+        )
+        self.undo_redo_manager.execute(command)
+        self.sheet_manager.sheet_view.refresh()
+        result = command.last_result or FormatCellsResult()
+        self.dialogs.show_info_message("Formatting applied", result.summary_message())
+        return result
+
+    @staticmethod
+    def _column_label(source_column: int) -> str:
+        label = ""
+        column = source_column + 1
+        while column > 0:
+            column, remainder = divmod(column - 1, 26)
+            label = chr(ord("A") + remainder) + label
+        return label or "A"

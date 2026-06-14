@@ -1,5 +1,6 @@
 """Tests for XLSX/XLSM loading and saving."""
 
+from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
@@ -8,7 +9,7 @@ from unittest.mock import patch
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font, PatternFill
 
-from tablora.domain import SortState
+from tablora.domain import FormatRequest, SortState
 from tablora.io import XlsxAdapter
 
 
@@ -93,6 +94,30 @@ class XlsxAdapterTests(unittest.TestCase):
                 data_only=False,
                 keep_vba=True,
             )
+
+    def test_save_persists_changed_number_format(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "dates.xlsx"
+            target = Path(temp_dir) / "dates_saved.xlsx"
+            workbook = Workbook()
+            sheet = workbook.active
+            sheet["A1"] = "date"
+            sheet["A2"] = datetime(2024, 6, 4, 15, 45)
+            sheet["A2"].number_format = "YYYY-MM-DD HH:MM"
+            workbook.save(path)
+
+            adapter = XlsxAdapter()
+            document = adapter.load(path)
+            result = document.get_active_sheet().format_cells(
+                [(0, 0)],
+                FormatRequest(kind="date", source_hint="auto", target="month_en"),
+            )
+            self.assertEqual(result.metadata_only_count, 1)
+
+            adapter.save(document, target)
+
+            saved = load_workbook(target)
+            self.assertEqual(saved.active["A2"].number_format, "[$-en-US]DD MMM YYYY HH:MM")
 
 
 if __name__ == "__main__":

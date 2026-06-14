@@ -30,6 +30,8 @@ class MenuBar:
         edit_menu.add_separator()
         edit_menu.add_command(label="Copy", command=self.app.on_copy)
         edit_menu.add_command(label="Paste", command=self.app.on_paste)
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Format Selected Cells...", command=self.app.on_format_selected_cells)
         menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
         root.config(menu=menu_bar)

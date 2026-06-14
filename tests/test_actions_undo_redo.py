@@ -5,12 +5,13 @@ import unittest
 from tablora.actions import (
     EditCellCommand,
     FilterCommand,
+    FormatCellsCommand,
     PasteRangeCommand,
     SortCommand,
     SortValuesCommand,
     UndoRedoManager,
 )
-from tablora.domain import FilterState, SortState, WorkbookDocument, WorksheetDocument
+from tablora.domain import FilterState, FormatRequest, SortState, WorkbookDocument, WorksheetDocument
 
 
 class UndoRedoCommandTests(unittest.TestCase):
@@ -122,6 +123,44 @@ class UndoRedoCommandTests(unittest.TestCase):
         manager.execute(EditCellCommand(worksheet=worksheet, row=2, column=0, value="Foxtrot", workbook=workbook))
         self.assertFalse(manager.can_redo())
         self.assertEqual(worksheet.get_cell(2, 0).value, "Foxtrot")
+
+    def test_format_cells_command_restores_values_and_number_formats(self) -> None:
+        worksheet = WorksheetDocument(sheet_id="sheet-1", title="Sheet 1")
+        worksheet.set_cell(0, 0, "23 Jan 2024")
+        worksheet.cells[(1, 0)] = worksheet.get_cell(1, 0)
+        worksheet.cells[(1, 0)].value = 1234.5
+        worksheet.cells[(1, 0)].number_format = "General"
+        worksheet.max_row = 2
+        worksheet.max_column = 1
+        worksheet.rebuild_view()
+        workbook = WorkbookDocument(worksheets=[worksheet], file_type="xlsx")
+        manager = UndoRedoManager()
+
+        command = FormatCellsCommand(
+            worksheet=worksheet,
+            addresses=[(0, 0), (1, 0)],
+            request=FormatRequest(kind="date", source_hint="auto", target="de_date"),
+            workbook=workbook,
+        )
+        manager.execute(command)
+
+        self.assertEqual(worksheet.get_cell(0, 0).value, "23.01.2024")
+        self.assertEqual(worksheet.get_cell(1, 0).number_format, "General")
+
+        number_command = FormatCellsCommand(
+            worksheet=worksheet,
+            addresses=[(1, 0)],
+            request=FormatRequest(kind="decimal", source_hint="auto", target="de_decimal"),
+            workbook=workbook,
+        )
+        manager.execute(number_command)
+        self.assertEqual(worksheet.get_cell(1, 0).number_format, "[$-de-DE]#,##0.0")
+
+        manager.undo()
+        self.assertEqual(worksheet.get_cell(1, 0).number_format, "General")
+
+        manager.undo()
+        self.assertEqual(worksheet.get_cell(0, 0).value, "23 Jan 2024")
 
 
 if __name__ == "__main__":

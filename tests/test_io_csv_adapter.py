@@ -5,7 +5,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 
-from tablora.domain import FilterState, SortState
+from tablora.domain import FilterState, FormatRequest, SortState
 from tablora.io import CsvAdapter
 
 
@@ -90,6 +90,24 @@ class CsvAdapterTests(unittest.TestCase):
                     ["31.12.2024"],
                 ],
             )
+
+    def test_save_persists_textual_formatting_changes(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            source = Path(temp_dir) / "formatted.csv"
+            target = Path(temp_dir) / "formatted_saved.csv"
+            source.write_text('amount\n"1.234,56"\n', encoding="utf-8-sig")
+
+            adapter = CsvAdapter()
+            document = adapter.load(source)
+            sheet = document.get_active_sheet()
+            sheet.format_cells([(0, 0)], FormatRequest(kind="decimal", source_hint="de_decimal", target="us_decimal"))
+
+            adapter.save(document, target)
+
+            with target.open(encoding="utf-8-sig", newline="") as file:
+                rows = list(csv.reader(file))
+
+            self.assertEqual(rows[1][0], "1,234.56")
 
 
 if __name__ == "__main__":

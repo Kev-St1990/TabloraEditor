@@ -7,6 +7,7 @@ import re
 from typing import Any, TypeAlias
 
 from tablora.domain.cell_data import CellData
+from tablora.domain.cell_formatting import FormatCellsResult, FormatPreviewItem, FormatRequest, format_cell_value
 from tablora.domain.filter_state import FilterState
 from tablora.domain.sort_state import SortState
 from tablora.domain.table_view import TableView
@@ -250,6 +251,26 @@ class WorksheetDocument:
         self.filter_state = filter_state
         self.rebuild_view()
 
+    def preview_format_cells(
+        self,
+        addresses: list[CellAddress],
+        request: FormatRequest,
+        *,
+        preview_limit: int = 5,
+    ) -> FormatCellsResult:
+        """Build a preview summary for formatting a set of cells."""
+        return self._format_cells_internal(addresses, request, apply=False, preview_limit=preview_limit)
+
+    def format_cells(
+        self,
+        addresses: list[CellAddress],
+        request: FormatRequest,
+        *,
+        preview_limit: int = 5,
+    ) -> FormatCellsResult:
+        """Apply formatting to a set of cells and return a structured summary."""
+        return self._format_cells_internal(addresses, request, apply=True, preview_limit=preview_limit)
+
     def _expand_dimensions_for_existing_cells(self) -> None:
         if not self.cells:
             return
@@ -257,6 +278,80 @@ class WorksheetDocument:
         max_column = max(column for _row, column in self.cells) + 1
         self.max_row = max(self.max_row, max_row)
         self.max_column = max(self.max_column, max_column)
+
+    def _format_cells_internal(
+        self,
+        addresses: list[CellAddress],
+        request: FormatRequest,
+        *,
+        apply: bool,
+        preview_limit: int,
+    ) -> FormatCellsResult:
+        result = FormatCellsResult()
+        normalized_addresses = sorted(set(addresses))
+        any_value_changed = False
+
+        for row, column in normalized_addresses:
+            self._validate_coordinates(row, column)
+            cell = self.get_cell(row, column)
+            decision = format_cell_value(
+                cell.value,
+                number_format=cell.number_format,
+                request=request,
+            )
+            result.add_preview(
+                FormatPreviewItem(
+                    address=self._cell_label(row, column),
+                    original=decision.original_display,
+                    formatted=decision.formatted_display,
+                    status=decision.status,
+                    note=decision.note,
+                ),
+                limit=preview_limit,
+            )
+
+            if decision.status == "changed":
+                result.changed_count += 1
+                if decision.metadata_only:
+                    result.metadata_only_count += 1
+                if decision.text_changed:
+                    result.text_changed_count += 1
+            elif decision.status == "unchanged":
+                result.unchanged_count += 1
+            elif decision.status == "ambiguous":
+                result.ambiguous_count += 1
+            elif decision.status == "invalid":
+                result.invalid_count += 1
+            elif decision.status == "empty":
+                result.empty_count += 1
+
+            if not apply or not decision.changed:
+                continue
+
+            target_cell = self.cells.get((row, column))
+            if target_cell is None:
+                target_cell = CellData()
+                self.cells[(row, column)] = target_cell
+
+            if decision.new_value is not None and decision.text_changed:
+                target_cell.set_value(decision.new_value)
+                any_value_changed = True
+            if decision.new_number_format is not None:
+                target_cell.number_format = decision.new_number_format
+
+        if apply and (any_value_changed or result.metadata_only_count):
+            self.rebuild_view()
+        return result
+
+    @staticmethod
+    def _cell_label(row: int, column: int) -> str:
+        """Return an Excel-style 1-based cell label such as `B12`."""
+        letters = ""
+        number = column + 1
+        while number > 0:
+            number, remainder = divmod(number - 1, 26)
+            letters = chr(ord("A") + remainder) + letters
+        return f"{letters}{row + 2}"
 
     @staticmethod
     def _validate_coordinates(row: int, column: int) -> None:

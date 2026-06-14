@@ -3,7 +3,7 @@
 from datetime import date, datetime
 import unittest
 
-from tablora.domain import CellData, WorkbookDocument, WorksheetDocument
+from tablora.domain import CellData, FormatRequest, WorkbookDocument, WorksheetDocument
 from tablora.domain.sort_state import SortState
 
 
@@ -110,6 +110,68 @@ class WorksheetDocumentSortTests(unittest.TestCase):
             [worksheet.get_cell(row, 0).value for row in range(3)],
             ["Alice", "Bob", "Charlie"],
         )
+
+
+class WorksheetDocumentFormattingTests(unittest.TestCase):
+    """Verify worksheet-level formatting operations."""
+
+    def test_format_cells_rewrites_text_dates_and_counts_ambiguity(self) -> None:
+        worksheet = WorksheetDocument(sheet_id="sheet-1", title="Sheet 1")
+        worksheet.set_cell(0, 0, "23 Jan 2024")
+        worksheet.set_cell(1, 0, "01 Mär 2024")
+        worksheet.set_cell(2, 0, "01/02/2024")
+
+        result = worksheet.format_cells(
+            [(0, 0), (1, 0), (2, 0)],
+            FormatRequest(kind="date", source_hint="auto", target="de_date"),
+        )
+
+        self.assertEqual(worksheet.get_cell(0, 0).value, "23.01.2024")
+        self.assertEqual(worksheet.get_cell(1, 0).value, "01.03.2024")
+        self.assertEqual(worksheet.get_cell(2, 0).value, "01/02/2024")
+        self.assertEqual(result.changed_count, 2)
+        self.assertEqual(result.ambiguous_count, 1)
+        self.assertEqual(result.text_changed_count, 2)
+
+    def test_preview_format_cells_includes_cell_addresses_for_ambiguous_values(self) -> None:
+        worksheet = WorksheetDocument(sheet_id="sheet-1", title="Sheet 1")
+        worksheet.set_cell(0, 0, "23 Jan 2024")
+        worksheet.set_cell(1, 1, "01/02/2024")
+
+        result = worksheet.preview_format_cells(
+            [(0, 0), (1, 1)],
+            FormatRequest(kind="date", source_hint="auto", target="de_date"),
+        )
+
+        self.assertEqual(result.preview_items[0].address, "A2")
+        self.assertEqual(result.preview_items[1].address, "B3")
+        self.assertEqual(result.preview_items[1].status, "ambiguous")
+        self.assertEqual(result.preview_items[1].note, "Mehrdeutig")
+
+    def test_format_cells_updates_number_format_for_typed_values(self) -> None:
+        worksheet = WorksheetDocument(sheet_id="sheet-1", title="Sheet 1")
+        worksheet.cells[(0, 0)] = CellData(value=1234.5, number_format="General")
+        worksheet.cells[(1, 0)] = CellData(value=datetime(2024, 6, 4, 15, 45), number_format="YYYY-MM-DD HH:MM")
+        worksheet.max_row = 2
+        worksheet.max_column = 1
+        worksheet.rebuild_view()
+
+        result = worksheet.format_cells(
+            [(0, 0), (1, 0)],
+            FormatRequest(kind="decimal", source_hint="auto", target="de_decimal"),
+        )
+
+        self.assertEqual(result.changed_count, 1)
+        self.assertEqual(result.metadata_only_count, 1)
+        self.assertEqual(worksheet.get_cell(0, 0).number_format, "[$-de-DE]#,##0.0")
+        self.assertEqual(worksheet.get_cell(1, 0).number_format, "YYYY-MM-DD HH:MM")
+
+        date_result = worksheet.format_cells(
+            [(1, 0)],
+            FormatRequest(kind="date", source_hint="auto", target="month_en"),
+        )
+        self.assertEqual(date_result.metadata_only_count, 1)
+        self.assertEqual(worksheet.get_cell(1, 0).number_format, "[$-en-US]DD MMM YYYY HH:MM")
 
 
 if __name__ == "__main__":

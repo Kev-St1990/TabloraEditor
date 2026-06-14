@@ -103,9 +103,10 @@ class CsvXlsxEditorApp(tk.Tk):
         """Copy the current selection to the clipboard."""
         if self.current_document is None:
             return event
-        matrix = self._selected_matrix()
+        matrix = self.sheet_manager.sheet_view.get_selected_source_matrix()
         if matrix:
             self.clipboard.copy_cells(matrix)
+            return "break"
         return event
 
     def on_paste(self, event: object | None = None) -> object | None:
@@ -114,8 +115,10 @@ class CsvXlsxEditorApp(tk.Tk):
             return event
         matrix = self.clipboard.paste_cells()
         if matrix:
-            self.current_document.get_active_sheet().set_cells(0, 0, matrix)
+            start_cell = self.sheet_manager.sheet_view.get_selected_source_start_cell() or (0, 0)
+            self.current_document.get_active_sheet().set_cells(start_cell[0], start_cell[1], matrix)
             self.sheet_manager.sheet_view.refresh()
+            return "break"
         return event
 
     def on_filter_selected_column(self, event: object | None = None) -> object | None:

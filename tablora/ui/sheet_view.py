@@ -143,6 +143,131 @@ class SheetView(Frame):
             return None
         return min(max(default, 1), self.worksheet.max_column)
 
+    def get_selected_source_matrix(self) -> list[list[Any]]:
+        """Return the currently selected source cells as a rectangular matrix.
+
+        The synthetic index column is ignored. If the widget exposes only a
+        single active cell instead of a full selection range, that cell is
+        copied as a 1x1 matrix.
+        """
+        if self.worksheet is None or self.mapper is None:
+            return []
+
+        selected_cells = self._selected_ui_cells()
+        if not selected_cells:
+            current_cell = self._current_ui_cell()
+            if current_cell is None:
+                return []
+            selected_cells = [current_cell]
+
+        source_cells: list[tuple[int, int]] = []
+        for ui_row, ui_column in selected_cells:
+            if ui_column <= 0:
+                continue
+            try:
+                source_cells.append(self.to_source_cell(ui_row, ui_column))
+            except ValueError:
+                continue
+
+        if not source_cells:
+            return []
+
+        min_row = min(row for row, _ in source_cells)
+        max_row = max(row for row, _ in source_cells)
+        min_column = min(column for _, column in source_cells)
+        max_column = max(column for _, column in source_cells)
+
+        return [
+            [self.worksheet.get_cell(source_row, source_column).value for source_column in range(min_column, max_column + 1)]
+            for source_row in range(min_row, max_row + 1)
+        ]
+
+    def get_selected_source_start_cell(self) -> tuple[int, int] | None:
+        """Return the top-left source cell of the current selection.
+
+        This is used as the paste anchor. The synthetic index column is ignored.
+        """
+        if self.worksheet is None or self.mapper is None:
+            return None
+
+        selected_cells = self._selected_ui_cells()
+        if not selected_cells:
+            current_cell = self._current_ui_cell()
+            if current_cell is None:
+                return None
+            selected_cells = [current_cell]
+
+        source_cells: list[tuple[int, int]] = []
+        for ui_row, ui_column in selected_cells:
+            if ui_column <= 0:
+                continue
+            try:
+                source_cells.append(self.to_source_cell(ui_row, ui_column))
+            except ValueError:
+                continue
+
+        if not source_cells:
+            return None
+
+        return min(source_cells)
+
+    def _selected_ui_cells(self) -> list[tuple[int, int]]:
+        """Collect selected UI cells from the underlying tksheet widget."""
+        candidates = (
+            "get_selected_cells",
+            "selected_cells",
+            "get_all_selection_boxes",
+            "get_selected_boxes",
+            "selection_boxes",
+        )
+        for name in candidates:
+            value = getattr(self.sheet, name, None)
+            if callable(value):
+                normalized = self._normalize_selection_result(value())
+                if normalized:
+                    return normalized
+            elif value:
+                normalized = self._normalize_selection_result(value)
+                if normalized:
+                    return normalized
+        current = self._current_ui_cell()
+        return [current] if current is not None else []
+
+    def _current_ui_cell(self) -> tuple[int, int] | None:
+        """Return the currently focused UI cell, if any."""
+        selected = getattr(self.sheet, "get_currently_selected", None)
+        if callable(selected):
+            current = selected()
+            if current is not None:
+                row = getattr(current, "row", None)
+                column = getattr(current, "column", None)
+                if isinstance(row, int) and isinstance(column, int):
+                    return row, column
+        return None
+
+    @staticmethod
+    def _normalize_selection_result(selection: Any) -> list[tuple[int, int]]:
+        """Normalize several tksheet selection shapes into UI cell coordinates."""
+        if selection is None:
+            return []
+
+        if isinstance(selection, tuple):
+            selection = [selection]
+
+        cells: list[tuple[int, int]] = []
+        for item in selection if isinstance(selection, list) else list(selection):
+            if not isinstance(item, (list, tuple)):
+                continue
+            if len(item) == 2 and all(isinstance(value, int) for value in item):
+                cells.append((int(item[0]), int(item[1])))
+                continue
+            if len(item) == 4 and all(isinstance(value, int) for value in item):
+                row_start, row_end, column_start, column_end = item
+                for row in range(row_start, row_end + 1):
+                    for column in range(column_start, column_end + 1):
+                        cells.append((row, column))
+        return cells
+
     def _set_sheet_data(self, matrix: list[list[Any]], headers: list[str]) -> None:
         if hasattr(self.sheet, "set_sheet_data"):
             self.sheet.set_sheet_data(matrix, reset_col_positions=True, reset_row_positions=True)

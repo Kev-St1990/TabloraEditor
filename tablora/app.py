@@ -6,7 +6,7 @@ from tablora.config import APP_NAME
 from tablora.actions import UndoRedoManager
 from tablora.domain import FilterState, SortState, WorkbookDocument
 from tablora.io import FileManager
-from tablora.platform import ClipboardService, DialogService, InMemoryClipboardBackend, ShortcutManager
+from tablora.platform import ClipboardService, DialogService, ShortcutManager, TkClipboardBackend
 from tablora.ui.filter_dialog import FilterDialog
 from tablora.ui.header_controller import HeaderController
 from tablora.ui.menu_bar import MenuBar
@@ -30,7 +30,7 @@ class CsvXlsxEditorApp(tk.Tk):
         self.file_manager = FileManager()
         self.dialogs = DialogService()
         self.shortcut_manager = ShortcutManager()
-        self.clipboard = ClipboardService(InMemoryClipboardBackend())
+        self.clipboard = ClipboardService(TkClipboardBackend(self))
         self.undo_redo_manager = UndoRedoManager()
         self.current_document: WorkbookDocument | None = None
         self.header_controller: HeaderController | None = None

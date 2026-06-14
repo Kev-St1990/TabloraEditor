@@ -1,6 +1,8 @@
 """Clipboard helpers for Excel-compatible tab-separated copy and paste."""
 
 from dataclasses import dataclass
+import locale
+from numbers import Integral, Real
 from typing import Protocol
 
 from tablora.domain import WorksheetDocument
@@ -27,6 +29,29 @@ class InMemoryClipboardBackend:
         self.text = text
 
 
+@dataclass(slots=True)
+class TkClipboardBackend:
+    """Clipboard backend that bridges to a live tkinter root."""
+
+    root: object
+
+    def get_text(self) -> str:
+        try:
+            clipboard_get = getattr(self.root, "clipboard_get")
+            return clipboard_get()
+        except Exception:
+            return ""
+
+    def set_text(self, text: str) -> None:
+        clipboard_clear = getattr(self.root, "clipboard_clear")
+        clipboard_append = getattr(self.root, "clipboard_append")
+        clipboard_clear()
+        clipboard_append(text)
+        update_idletasks = getattr(self.root, "update_idletasks", None)
+        if callable(update_idletasks):
+            update_idletasks()
+
+
 class ClipboardService:
     """Serializes and parses Excel-style TSV clipboard content."""
 
@@ -51,7 +76,7 @@ class ClipboardService:
         """
         rows = []
         for row in matrix:
-            rows.append("\t".join("" if value is None else str(value) for value in row))
+            rows.append("\t".join(self._format_clipboard_value(value) for value in row))
         return "\r\n".join(rows)
 
     def parse_tsv(self, text: str) -> list[list[str]]:
@@ -100,3 +125,27 @@ class ClipboardService:
     ) -> None:
         """Paste a source matrix directly into a worksheet document."""
         worksheet.set_cells(start_row, start_column, source)
+
+    @staticmethod
+    def _format_clipboard_value(value: object) -> str:
+        """Format one value for Excel-friendly clipboard text.
+
+        Numeric values are rendered with the current locale's decimal separator
+        so Excel can paste them as numbers instead of reinterpreting dot-based
+        decimals as thousands separators in locales such as German.
+        """
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value
+        if isinstance(value, bool):
+            return "TRUE" if value else "FALSE"
+        if isinstance(value, Integral):
+            return str(value)
+        if isinstance(value, Real):
+            text = format(value, ".15g")
+            decimal_point = locale.localeconv().get("decimal_point") or "."
+            if decimal_point != ".":
+                text = text.replace(".", decimal_point)
+            return text
+        return str(value)

@@ -48,6 +48,7 @@ class RecordingSheetWidget:
     commands: list[tuple[str, object, dict[str, object]]] = field(default_factory=list)
     MT: object | None = None
     CH: object | None = None
+    RI: object | None = None
 
     def popup_menu_add_command(self, label: str, command: object, **kwargs: object) -> None:
         self.commands.append((label, command, kwargs))
@@ -146,6 +147,10 @@ class ShortcutAndDialogTests(unittest.TestCase):
             def on_copy(self, event=None): ...
             def on_paste(self, event=None): ...
             def on_format_selected_cells(self, event=None): ...
+            def on_hide_selected_rows(self, event=None): ...
+            def on_hide_selected_columns(self, event=None): ...
+            def on_unhide_rows(self, event=None): ...
+            def on_unhide_columns(self, event=None): ...
             def on_filter_selected_column(self, event=None): ...
             def on_clear_filters(self, event=None): ...
 
@@ -169,6 +174,34 @@ class ShortcutAndDialogTests(unittest.TestCase):
         self.assertIs(stored_callback, callback)
         self.assertEqual(kwargs["header_menu"], True)
         self.assertEqual(kwargs["table_menu"], False)
+
+    def test_sheet_view_registers_index_context_actions(self) -> None:
+        sheet_view = SheetView.__new__(SheetView)
+        sheet_view.sheet = RecordingSheetWidget()
+
+        callback = lambda: None
+        sheet_view.add_index_context_action("Hide Row", callback)
+
+        self.assertEqual(len(sheet_view.sheet.commands), 1)
+        label, stored_callback, kwargs = sheet_view.sheet.commands[0]
+        self.assertEqual(label, "Hide Row")
+        self.assertIs(stored_callback, callback)
+        self.assertEqual(kwargs["index_menu"], True)
+        self.assertEqual(kwargs["header_menu"], False)
+
+    def test_sheet_view_registers_table_context_actions(self) -> None:
+        sheet_view = SheetView.__new__(SheetView)
+        sheet_view.sheet = RecordingSheetWidget()
+
+        callback = lambda: None
+        sheet_view.add_table_context_action("Hide Selected Rows", callback)
+
+        self.assertEqual(len(sheet_view.sheet.commands), 1)
+        label, stored_callback, kwargs = sheet_view.sheet.commands[0]
+        self.assertEqual(label, "Hide Selected Rows")
+        self.assertIs(stored_callback, callback)
+        self.assertEqual(kwargs["table_menu"], True)
+        self.assertEqual(kwargs["index_menu"], False)
 
     def test_sheet_view_registers_menu_icons(self) -> None:
         sheet_view = SheetView.__new__(SheetView)
@@ -210,6 +243,16 @@ class ShortcutAndDialogTests(unittest.TestCase):
         sheet_view.sheet = RecordingSheetWidget(CH=HeaderCanvas())
 
         self.assertEqual(sheet_view.get_header_context_ui_column(), 3)
+
+    def test_sheet_view_uses_index_context_row_when_present(self) -> None:
+        @dataclass
+        class IndexCanvas:
+            popup_menu_loc: int = 2
+
+        sheet_view = SheetView.__new__(SheetView)
+        sheet_view.sheet = RecordingSheetWidget(RI=IndexCanvas())
+
+        self.assertEqual(sheet_view.get_index_context_ui_row(), 2)
 
 
 if __name__ == "__main__":

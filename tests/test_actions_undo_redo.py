@@ -10,6 +10,8 @@ from tablora.actions import (
     SortCommand,
     SortValuesCommand,
     UndoRedoManager,
+    UpdateHiddenColumnsCommand,
+    UpdateHiddenRowsCommand,
 )
 from tablora.domain import FilterState, FormatRequest, SortState, WorkbookDocument, WorksheetDocument
 
@@ -161,6 +163,26 @@ class UndoRedoCommandTests(unittest.TestCase):
 
         manager.undo()
         self.assertEqual(worksheet.get_cell(0, 0).value, "23 Jan 2024")
+
+    def test_hide_row_and_column_commands_support_undo(self) -> None:
+        workbook, worksheet = self.make_workbook()
+        worksheet.set_cell(0, 1, "Paris")
+        worksheet.set_cell(1, 1, "Berlin")
+        worksheet.set_cell(2, 1, "London")
+        manager = UndoRedoManager()
+
+        row_command = UpdateHiddenRowsCommand(worksheet=worksheet, rows=[1], hide=True, workbook=workbook)
+        manager.execute(row_command)
+        self.assertEqual(worksheet.get_display_rows(), [0, 2])
+
+        column_command = UpdateHiddenColumnsCommand(worksheet=worksheet, columns=[1], hide=True, workbook=workbook)
+        manager.execute(column_command)
+        self.assertEqual(worksheet.table_view.visible_source_columns, [0])
+
+        manager.undo()
+        self.assertEqual(worksheet.table_view.visible_source_columns, [0, 1])
+        manager.undo()
+        self.assertEqual(worksheet.get_display_rows(), [0, 1, 2])
 
 
 if __name__ == "__main__":

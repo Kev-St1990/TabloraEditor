@@ -18,6 +18,8 @@ class PackageStructureTests(unittest.TestCase):
             "tablora.actions.paste_range_command",
             "tablora.actions.sort_command",
             "tablora.actions.undo_redo_manager",
+            "tablora.actions.update_hidden_columns_command",
+            "tablora.actions.update_hidden_rows_command",
             "tablora.domain",
             "tablora.domain.cell_data",
             "tablora.domain.cell_formatting",
@@ -64,6 +66,10 @@ class PackageStructureTests(unittest.TestCase):
             "on_copy",
             "on_paste",
             "on_format_selected_cells",
+            "on_hide_selected_rows",
+            "on_hide_selected_columns",
+            "on_unhide_rows",
+            "on_unhide_columns",
         ]:
             with self.subTest(method=method_name):
                 self.assertTrue(hasattr(CsvXlsxEditorApp, method_name))

@@ -8,6 +8,8 @@ from tablora.actions.paste_range_command import PasteRangeCommand
 from tablora.actions.sort_command import SortCommand
 from tablora.actions.sort_values_command import SortValuesCommand
 from tablora.actions.undo_redo_manager import UndoRedoManager
+from tablora.actions.update_hidden_columns_command import UpdateHiddenColumnsCommand
+from tablora.actions.update_hidden_rows_command import UpdateHiddenRowsCommand
 
 __all__ = [
     "Command",
@@ -18,4 +20,6 @@ __all__ = [
     "SortCommand",
     "SortValuesCommand",
     "UndoRedoManager",
+    "UpdateHiddenColumnsCommand",
+    "UpdateHiddenRowsCommand",
 ]

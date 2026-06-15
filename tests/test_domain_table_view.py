@@ -34,6 +34,19 @@ class TableViewTests(unittest.TestCase):
         self.assertEqual(worksheet.table_view.source_row_for_ui(1), 1)
         self.assertEqual(worksheet.table_view.source_column_for_ui(1), 0)
 
+    def test_hidden_rows_and_columns_are_removed_from_view(self) -> None:
+        worksheet = WorksheetDocument(sheet_id="sheet-1", title="Sheet 1")
+        worksheet.set_cell(0, 0, "A")
+        worksheet.set_cell(0, 1, "B")
+        worksheet.set_cell(1, 0, "C")
+        worksheet.set_cell(1, 1, "D")
+
+        worksheet.hide_rows([0])
+        worksheet.hide_columns([1])
+
+        self.assertEqual(worksheet.get_display_rows(), [1])
+        self.assertEqual(worksheet.table_view.visible_source_columns, [0])
+
 
 if __name__ == "__main__":
     unittest.main()

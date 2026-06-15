@@ -32,6 +32,11 @@ class MenuBar:
         edit_menu.add_command(label="Paste", command=self.app.on_paste)
         edit_menu.add_separator()
         edit_menu.add_command(label="Format Selected Cells...", command=self.app.on_format_selected_cells)
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Hide Selected Rows", command=self.app.on_hide_selected_rows)
+        edit_menu.add_command(label="Hide Selected Columns", command=self.app.on_hide_selected_columns)
+        edit_menu.add_command(label="Unhide Rows", command=self.app.on_unhide_rows)
+        edit_menu.add_command(label="Unhide Columns", command=self.app.on_unhide_columns)
         menu_bar.add_cascade(label="Edit", menu=edit_menu)
 
         root.config(menu=menu_bar)

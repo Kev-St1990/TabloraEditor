@@ -88,6 +88,16 @@ class SheetCoordinateMappingTests(unittest.TestCase):
         self.assertEqual(headers[27], "AA")
         self.assertEqual(headers[28], "AB")
 
+    def test_mapper_skips_hidden_source_columns(self) -> None:
+        worksheet = self.make_worksheet()
+        worksheet.hide_columns([0])
+        mapper = SheetCoordinateMapper(worksheet)
+        builder = SheetMatrixBuilder(worksheet)
+
+        self.assertEqual(builder.headers(), [INDEX_COLUMN_HEADER, "B"])
+        self.assertEqual(mapper.to_source_cell(0, 1), (0, 1))
+        self.assertEqual(mapper.from_source_cell(1, 1), (1, 1))
+
 
 if __name__ == "__main__":
     unittest.main()

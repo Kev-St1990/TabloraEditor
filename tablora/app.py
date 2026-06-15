@@ -3,7 +3,12 @@
 import tkinter as tk
 
 from tablora.config import APP_NAME
-from tablora.actions import FormatCellsCommand, UndoRedoManager
+from tablora.actions import (
+    FormatCellsCommand,
+    UndoRedoManager,
+    UpdateHiddenColumnsCommand,
+    UpdateHiddenRowsCommand,
+)
 from tablora.domain import FilterState, FormatCellsResult, FormatRequest, SortState, WorkbookDocument
 from tablora.io import FileManager
 from tablora.platform import ClipboardService, DialogService, ShortcutManager, TkClipboardBackend
@@ -180,6 +185,47 @@ class CsvXlsxEditorApp(tk.Tk):
         )
         return event
 
+    def on_hide_selected_columns(self, event: object | None = None) -> object | None:
+        """Hide the selected or targeted data columns in the editor view."""
+        if self.current_document is None:
+            return event
+        columns = self.sheet_manager.sheet_view.get_selected_source_columns()
+        if not columns:
+            ui_column = self.sheet_manager.sheet_view.get_header_context_ui_column()
+            if ui_column is not None and ui_column > 0:
+                columns = [ui_column - 1]
+        self._update_hidden_columns(columns=columns, hide=True)
+        return event
+
+    def on_unhide_columns(self, event: object | None = None) -> object | None:
+        """Unhide hidden data columns in the editor view."""
+        if self.current_document is None:
+            return event
+        worksheet = self.current_document.get_active_sheet()
+        self._update_hidden_columns(columns=sorted(worksheet.hidden_columns), hide=False)
+        return event
+
+    def on_hide_selected_rows(self, event: object | None = None) -> object | None:
+        """Hide the selected or targeted source rows in the editor view."""
+        if self.current_document is None:
+            return event
+        rows = self.sheet_manager.sheet_view.get_selected_source_rows()
+        if not rows:
+            ui_row = self.sheet_manager.sheet_view.get_index_context_ui_row()
+            worksheet = self.current_document.get_active_sheet()
+            if isinstance(ui_row, int) and 0 <= ui_row < len(worksheet.table_view.visible_source_rows):
+                rows = [worksheet.table_view.source_row_for_ui(ui_row)]
+        self._update_hidden_rows(rows=rows, hide=True)
+        return event
+
+    def on_unhide_rows(self, event: object | None = None) -> object | None:
+        """Unhide hidden source rows in the editor view."""
+        if self.current_document is None:
+            return event
+        worksheet = self.current_document.get_active_sheet()
+        self._update_hidden_rows(rows=sorted(worksheet.hidden_rows), hide=False)
+        return event
+
     def on_sort_selected_column_ascending(self, event: object | None = None) -> object | None:
         """Sort the selected data column in ascending order."""
         return self._sort_selected_rows("asc", event)
@@ -234,6 +280,38 @@ class CsvXlsxEditorApp(tk.Tk):
         self.sheet_manager.sheet_view.add_header_context_action(
             "Format Column...",
             self.on_format_selected_column,
+        )
+        self.sheet_manager.sheet_view.add_header_context_action(
+            "Hide Column",
+            self.on_hide_selected_columns,
+        )
+        self.sheet_manager.sheet_view.add_header_context_action(
+            "Hide Selected Columns",
+            self.on_hide_selected_columns,
+        )
+        self.sheet_manager.sheet_view.add_header_context_action(
+            "Unhide Columns",
+            self.on_unhide_columns,
+        )
+        self.sheet_manager.sheet_view.add_index_context_action(
+            "Hide Row",
+            self.on_hide_selected_rows,
+        )
+        self.sheet_manager.sheet_view.add_index_context_action(
+            "Hide Selected Rows",
+            self.on_hide_selected_rows,
+        )
+        self.sheet_manager.sheet_view.add_index_context_action(
+            "Unhide Rows",
+            self.on_unhide_rows,
+        )
+        self.sheet_manager.sheet_view.add_table_context_action(
+            "Hide Selected Rows",
+            self.on_hide_selected_rows,
+        )
+        self.sheet_manager.sheet_view.add_table_context_action(
+            "Unhide Rows",
+            self.on_unhide_rows,
         )
         self.sheet_manager.sheet_view.add_header_context_action("Clear Filters", self.on_clear_filters)
 
@@ -333,6 +411,32 @@ class CsvXlsxEditorApp(tk.Tk):
         result = command.last_result or FormatCellsResult()
         self.dialogs.show_info_message("Formatting applied", result.summary_message())
         return result
+
+    def _update_hidden_columns(self, *, columns: list[int], hide: bool) -> None:
+        worksheet = self.current_document.get_active_sheet() if self.current_document is not None else None
+        if worksheet is None or not columns:
+            return
+        command = UpdateHiddenColumnsCommand(
+            worksheet=worksheet,
+            columns=columns,
+            hide=hide,
+            workbook=self.current_document,
+        )
+        self.undo_redo_manager.execute(command)
+        self.sheet_manager.sheet_view.refresh()
+
+    def _update_hidden_rows(self, *, rows: list[int], hide: bool) -> None:
+        worksheet = self.current_document.get_active_sheet() if self.current_document is not None else None
+        if worksheet is None or not rows:
+            return
+        command = UpdateHiddenRowsCommand(
+            worksheet=worksheet,
+            rows=rows,
+            hide=hide,
+            workbook=self.current_document,
+        )
+        self.undo_redo_manager.execute(command)
+        self.sheet_manager.sheet_view.refresh()
 
     @staticmethod
     def _column_label(source_column: int) -> str:

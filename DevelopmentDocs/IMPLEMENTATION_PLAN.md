@@ -23,6 +23,7 @@ Statuswerte:
 | 7. Header-Controller und Filter-Popup anbinden | Erledigt | Linksklick-Sortierung, Doppelklick-Autosize, Rechtsklick-Filter und Popup-State-Handling implementiert | Unit-Tests für Controller-Logik und Popup-State bestanden | Filter entfernt beim Speichern keine Daten |
 | 8. Plattformintegration finalisieren | Erledigt | Menüs, Dateidialoge, Shortcuts für macOS/Windows und App-Komposition finalisiert | Unit-Tests für Shortcut-Auswahl, Dialog-Filters und Menü-Anbindung bestanden | `Command` auf macOS, `Control` auf Windows |
 | 9. Zellformatierung für Dezimalzahlen und Datumswerte ergänzen | Erledigt | Selektion oder ganze Spalte kann zwischen DEU-/US-Zahlenformaten und gängigen Datumsformaten umgestellt werden; Vorschau, Warnungen und Undo/Redo sind angebunden | Domain-, Action-, UI-Import- und Roundtrip-Tests für Erkennung, Ambiguität, Persistenz und Rückgängig/Wiederholen bestanden | XLSX ändert nach Möglichkeit `number_format`, CSV schreibt Textwerte kontrolliert um; `Auto` überspringt mehrdeutige Datumswerte |
+| 10. Hide / Unhide für Zeilen und Spalten ergänzen | Erledigt | Zeilen und Spalten können im Editor-View versteckt und wieder eingeblendet werden | Domain-, Command-, Mapping-, Menü- und Selection-Tests für Hidden-State, Undo/Redo und Kontextaktionen bestanden | View-only; Speichern ignoriert Hidden-State bewusst |
 
 ## Umsetzungsgates
 
@@ -655,3 +656,112 @@ Der Schritt gilt als abgeschlossen, wenn:
 - Undo/Redo die gesamte Aktion sauber rückgängig macht
 - XLSX und CSV die jeweiligen Persistenzregeln einhalten
 - Tests für Erkennung, Vorschau, Command und Roundtrip grün sind
+
+## Erweiterungsplan: Hide / Unhide für Zeilen und Spalten
+
+### Zielbild
+
+Der Editor soll Zeilen und Spalten ähnlich wie Excel ausblenden und wieder einblenden können, jedoch ausschließlich als View-Zustand im Editor. Die Quelldaten und das Speicherformat bleiben unverändert.
+
+### Scope der ersten Version
+
+- `Hide Selected Rows`
+- `Hide Selected Columns`
+- `Unhide Rows` über Menü
+- `Unhide Columns` über Menü
+- Kontextaktionen für Spalten-Header und Indexbereich
+- Undo/Redo für alle Hide-/Unhide-Aktionen
+
+Nicht Teil von v1:
+
+- Persistenz in XLSX/XLSM
+- Spezialdarstellung mit sichtbaren Unhide-Markern zwischen Headern
+- Verstecken ganzer Worksheets oder komplexer Gruppierungen
+
+### UX-Regeln
+
+- `Hide` wirkt auf aktuelle Selektion und zusätzlich auf gezielte Header-/Index-Kontexte.
+- `Unhide` ist sowohl über Kontextmenü als auch über Menüpunkte erreichbar.
+- Wenn keine versteckten Zeilen oder Spalten vorhanden sind, bleibt `Unhide` folgenlos.
+- Versteckte Zeilen und Spalten bleiben in Sortierung, Filterlogik und Dateiinhalt erhalten, werden aber nicht gerendert.
+
+### Architekturelle Einordnung
+
+#### Domain
+
+`WorksheetDocument` erhält expliziten Hidden-State:
+
+- `hidden_rows: set[int]`
+- `hidden_columns: set[int]`
+
+`rebuild_view()` berechnet sichtbare Reihen und Spalten künftig aus:
+
+- vorhandenen Dimensionen
+- Filter-/Sortierzustand
+- Hidden-State
+
+#### Actions
+
+Neue reversible Commands:
+
+- `UpdateHiddenRowsCommand`
+- `UpdateHiddenColumnsCommand`
+
+Die Commands arbeiten snapshot-basiert wie Sortierung, Filter und Zellformatierung.
+
+#### UI
+
+Neue Einstiegspunkte:
+
+- Header-Kontextmenü: `Hide Column`, `Hide Selected Columns`, `Unhide Columns`
+- Index-/Row-Kontextmenü: `Hide Row`, `Hide Selected Rows`, `Unhide Rows`
+- Edit-Menü:
+  - `Hide Selected Rows`
+  - `Hide Selected Columns`
+  - `Unhide Rows`
+  - `Unhide Columns`
+
+### Schrittablauf für die Implementierung
+
+#### 10.1 Domainmodell und Snapshot erweitern
+
+- Hidden-State in `WorksheetDocument` und `WorksheetSnapshot` aufnehmen
+- `rebuild_view()` für versteckte Zeilen und Spalten erweitern
+
+#### 10.2 Mapping und Matrix-Rendering absichern
+
+- `TableView`, `SheetCoordinateMapper` und `SheetMatrixBuilder` müssen mit ausgeblendeten Spalten korrekt arbeiten
+- Auswahl und Source/UI-Mapping dürfen nur sichtbare Elemente berücksichtigen
+
+#### 10.3 Commands und Undo/Redo anbinden
+
+- Reversible Commands für Row-/Column-Hide-State
+- Undo/Redo muss die sichtbare Projektion sauber wiederherstellen
+
+#### 10.4 Kontext- und Menüaktionen anbinden
+
+- Header- und Index-Kontextmenüs erweitern
+- Menüeinträge im `Edit`-Menü ergänzen
+- `Unhide` über Menü blendet alle aktuell versteckten Zeilen bzw. Spalten wieder ein
+
+### Teststrategie für Schritt 10
+
+- `tests/test_domain_table_view.py`
+  - versteckte Zeilen und Spalten verschwinden aus der View
+- `tests/test_domain_workbook_document.py`
+  - hide/unhide aktualisiert den Domainzustand korrekt
+- `tests/test_actions_undo_redo.py`
+  - hide/unhide ist reversibel
+- `tests/test_ui_coordinate_mapping.py`
+  - sichtbare UI-Spalten mappen nach Hide korrekt auf Source-Spalten
+- `tests/test_ui_sheet_view_selection.py`
+  - Selektionen liefern sichtbare Source-Reihen und Source-Spalten
+- `tests/test_platform_shortcuts_dialogs.py`
+  - Menüeinträge für Hide/Unhide sind verdrahtet
+
+### Akzeptanz für Schritt 10 insgesamt
+
+- Zeilen und Spalten lassen sich im Editor verstecken und wieder einblenden
+- Hidden-State verändert nur die View und nicht das Speicherergebnis
+- Undo/Redo funktioniert für Hide/Unhide
+- Mapping, Sortierung und Filter bleiben mit versteckten Zeilen/Spalten stabil

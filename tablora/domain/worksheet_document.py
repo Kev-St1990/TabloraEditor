@@ -101,6 +101,8 @@ class WorksheetSnapshot:
     header_cells: dict[int, CellData]
     max_row: int
     max_column: int
+    hidden_rows: set[int]
+    hidden_columns: set[int]
     sort_state: SortState | None
     filter_state: FilterState
 
@@ -117,6 +119,8 @@ class WorksheetDocument:
     cells: dict[CellAddress, CellData] = field(default_factory=dict)
     max_row: int = 0
     max_column: int = 0
+    hidden_rows: set[int] = field(default_factory=set)
+    hidden_columns: set[int] = field(default_factory=set)
     table_view: TableView = field(default_factory=TableView)
     sort_state: SortState | None = None
     filter_state: FilterState = field(default_factory=FilterState)
@@ -183,6 +187,8 @@ class WorksheetDocument:
             header_cells={column: deepcopy(cell) for column, cell in self.header_cells.items()},
             max_row=self.max_row,
             max_column=self.max_column,
+            hidden_rows=set(self.hidden_rows),
+            hidden_columns=set(self.hidden_columns),
             sort_state=deepcopy(self.sort_state),
             filter_state=deepcopy(self.filter_state),
         )
@@ -194,6 +200,8 @@ class WorksheetDocument:
         self.header_cells = {column: deepcopy(cell) for column, cell in snapshot.header_cells.items()}
         self.max_row = snapshot.max_row
         self.max_column = snapshot.max_column
+        self.hidden_rows = set(snapshot.hidden_rows)
+        self.hidden_columns = set(snapshot.hidden_columns)
         self.sort_state = deepcopy(snapshot.sort_state)
         self.filter_state = deepcopy(snapshot.filter_state)
         self.rebuild_view()
@@ -210,6 +218,7 @@ class WorksheetDocument:
         """Recompute visible rows from current filter and sort state."""
         rows = list(range(self.max_row))
         rows = [row for row in rows if self.filter_state.matches(self.get_row_values(row))]
+        rows = [row for row in rows if row not in self.hidden_rows]
 
         if self.sort_state is not None:
             reverse = self.sort_state.direction == "desc"
@@ -218,7 +227,7 @@ class WorksheetDocument:
 
         self.table_view = TableView(
             visible_source_rows=rows,
-            visible_source_columns=list(range(self.max_column)),
+            visible_source_columns=[column for column in range(self.max_column) if column not in self.hidden_columns],
             row_ids={row: row + 1 for row in range(self.max_row)},
         )
 
@@ -249,6 +258,32 @@ class WorksheetDocument:
     def apply_filter(self, filter_state: FilterState) -> None:
         """Update filter state and rebuild the visible table view."""
         self.filter_state = filter_state
+        self.rebuild_view()
+
+    def hide_rows(self, rows: list[int]) -> None:
+        """Hide source rows in the editor view."""
+        self.hidden_rows.update(row for row in rows if 0 <= row < self.max_row)
+        self.rebuild_view()
+
+    def unhide_rows(self, rows: list[int] | None = None) -> None:
+        """Unhide source rows in the editor view."""
+        if rows is None:
+            self.hidden_rows.clear()
+        else:
+            self.hidden_rows.difference_update(rows)
+        self.rebuild_view()
+
+    def hide_columns(self, columns: list[int]) -> None:
+        """Hide source columns in the editor view."""
+        self.hidden_columns.update(column for column in columns if 0 <= column < self.max_column)
+        self.rebuild_view()
+
+    def unhide_columns(self, columns: list[int] | None = None) -> None:
+        """Unhide source columns in the editor view."""
+        if columns is None:
+            self.hidden_columns.clear()
+        else:
+            self.hidden_columns.difference_update(columns)
         self.rebuild_view()
 
     def preview_format_cells(

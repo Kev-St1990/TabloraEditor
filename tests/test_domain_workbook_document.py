@@ -174,5 +174,37 @@ class WorksheetDocumentFormattingTests(unittest.TestCase):
         self.assertEqual(worksheet.get_cell(1, 0).number_format, "[$-en-US]DD MMM YYYY HH:MM")
 
 
+class WorksheetDocumentHiddenStateTests(unittest.TestCase):
+    """Verify hide and unhide behavior for rows and columns."""
+
+    def test_hide_and_unhide_rows_updates_view_state(self) -> None:
+        worksheet = WorksheetDocument(sheet_id="sheet-1", title="Sheet 1")
+        worksheet.set_cell(0, 0, "A")
+        worksheet.set_cell(1, 0, "B")
+        worksheet.set_cell(2, 0, "C")
+
+        worksheet.hide_rows([1])
+        self.assertEqual(worksheet.hidden_rows, {1})
+        self.assertEqual(worksheet.get_display_rows(), [0, 2])
+
+        worksheet.unhide_rows([1])
+        self.assertEqual(worksheet.hidden_rows, set())
+        self.assertEqual(worksheet.get_display_rows(), [0, 1, 2])
+
+    def test_hide_and_unhide_columns_updates_visible_columns(self) -> None:
+        worksheet = WorksheetDocument(sheet_id="sheet-1", title="Sheet 1")
+        worksheet.set_cell(0, 0, "A")
+        worksheet.set_cell(0, 1, "B")
+        worksheet.set_cell(0, 2, "C")
+
+        worksheet.hide_columns([1])
+        self.assertEqual(worksheet.hidden_columns, {1})
+        self.assertEqual(worksheet.table_view.visible_source_columns, [0, 2])
+
+        worksheet.unhide_columns()
+        self.assertEqual(worksheet.hidden_columns, set())
+        self.assertEqual(worksheet.table_view.visible_source_columns, [0, 1, 2])
+
+
 if __name__ == "__main__":
     unittest.main()
